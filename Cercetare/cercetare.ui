@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CercetareClass</class>
+ <widget class="QMainWindow" name="CercetareClass">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>996</width>
+    <height>598</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Cercetare</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="QLabel" name="labelImageViewerOriginal">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+      <widget class="QLabel" name="labelImageViewerResult">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QTextBrowser" name="textBrowserLog"/>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>996</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionOpen_image"/>
+    <addaction name="actionSave_image"/>
+   </widget>
+   <widget class="QMenu" name="menuFilters">
+    <property name="title">
+     <string>Filters</string>
+    </property>
+    <addaction name="actionSobel"/>
+    <addaction name="actionGaussian_Blur"/>
+    <addaction name="actionSharpening"/>
+    <addaction name="actionColor_Smoothing"/>
+   </widget>
+   <widget class="QMenu" name="menuSegmentation">
+    <property name="title">
+     <string>Segmentation</string>
+    </property>
+    <addaction name="actionK_Means"/>
+    <addaction name="actionThreshold"/>
+    <addaction name="actionSOM"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="actionGrayscale"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuFilters"/>
+   <addaction name="menuSegmentation"/>
+  </widget>
+  <widget class="QToolBar" name="mainToolBar">
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionOpen_image">
+   <property name="text">
+    <string>Open image</string>
+   </property>
+  </action>
+  <action name="actionSave_image">
+   <property name="text">
+    <string>Save image</string>
+   </property>
+  </action>
+  <action name="actionSobel">
+   <property name="text">
+    <string>Sobel</string>
+   </property>
+  </action>
+  <action name="actionGaussian_Blur">
+   <property name="text">
+    <string>Gaussian Blur</string>
+   </property>
+  </action>
+  <action name="actionSharpening">
+   <property name="text">
+    <string>Sharpening</string>
+   </property>
+  </action>
+  <action name="actionColor_Smoothing">
+   <property name="text">
+    <string>Color Smoothing</string>
+   </property>
+  </action>
+  <action name="actionK_Means">
+   <property name="text">
+    <string>K-Means</string>
+   </property>
+  </action>
+  <action name="actionThreshold">
+   <property name="text">
+    <string>Threshold</string>
+   </property>
+  </action>
+  <action name="actionGrayscale">
+   <property name="text">
+    <string>Grayscale</string>
+   </property>
+  </action>
+  <action name="actionSOM">
+   <property name="text">
+    <string>SOM</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="cercetare.qrc"/>
+ </resources>
+ <connections/>
+</ui>
