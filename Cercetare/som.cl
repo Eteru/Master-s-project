@@ -74,7 +74,7 @@ __kernel void update_weights(
 	if (pos < neuron_count) {
 		int dist = abs(pos - bmu_idx[0]);
 
-		if (dist <= neigh_distance) {
+		if (dist < neigh_distance) {
 			float influence = exp(-(dist * dist) / (2.f * (neigh_distance * neigh_distance)));
 
 			neurons[pos].x += learning_rate * influence * (value.x - neurons[pos].x);

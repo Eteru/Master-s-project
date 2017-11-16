@@ -8,7 +8,7 @@
 CLWrapper::CLWrapper()
 	: m_initialized(false), m_data(nullptr), m_data_aux(nullptr)
 {
-	srand(static_cast <unsigned> (time(0)));
+	std::srand(static_cast <unsigned> (time(0)));
 	
 	InitializeCL();
 }
@@ -397,7 +397,7 @@ void CLWrapper::SOMSegmentation(QImage & img)
 	cl_int res;
 
 	int neuron_count = 2;
-	int epochs = (img.width() * img.height());// / 2; // number of iterations
+	int epochs = (img.width() * img.height()) / 2; // number of iterations
 	int x = 0, y = 0; // index of the input value -- will be chosen randomly
 	const double ct_learning_rate = 0.1;
 	const double time_constant = epochs / log(neuron_count);
@@ -432,8 +432,8 @@ void CLWrapper::SOMSegmentation(QImage & img)
 
 		for (int epoch = 0; epoch < epochs; ++epoch) {
 			// Chose a random input value
-			x = rand() % img.width();
-			y = rand() % img.height();
+			x = std::rand() % img.width();
+			y = std::rand() % img.height();
 			
 			QRgb color = img.pixel(x, y);
 			cl_float3 value = { qRed(color) / 256.f, qBlue(color) / 256.f, qGreen(color) / 256.f };
@@ -577,9 +577,9 @@ void CLWrapper::GenerateCentroids(const uint32_t count, std::vector<Centroid> & 
 	for (Centroid & centroid : centroids) {
 		centroid = {};
 
-		centroid.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		centroid.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		centroid.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		centroid.x = static_cast <float> (std::rand()) / static_cast <float> (RAND_MAX);
+		centroid.y = static_cast <float> (std::rand()) / static_cast <float> (RAND_MAX);
+		centroid.z = static_cast <float> (std::rand()) / static_cast <float> (RAND_MAX);
 	}
 }
 
@@ -589,9 +589,9 @@ void CLWrapper::GenerateNeurons(const uint32_t count, std::vector<Neuron>& neuro
 	for (Neuron & neuron : neurons) {
 		neuron = {};
 
-		neuron.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		neuron.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		neuron.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		neuron.x = static_cast <float> (std::rand()) / static_cast <float> (RAND_MAX);
+		neuron.y = static_cast <float> (std::rand()) / static_cast <float> (RAND_MAX);
+		neuron.z = static_cast <float> (std::rand()) / static_cast <float> (RAND_MAX);
 	}
 }
 
