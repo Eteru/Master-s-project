@@ -33,7 +33,7 @@ public:
 
 	void KMeans(QImage & img, const int centroid_count);
 	void CMeans(QImage & img, const int centroid_count);
-	void SOMSegmentation(QImage & img);
+	void SOMSegmentation(QImage & img, QImage * ground_truth = nullptr);
 	void Threshold(QImage & img, const float value);
 
 private:
@@ -81,6 +81,8 @@ private:
 	float NormalizedEuclideanDistance(const Neuron & n1, const Neuron & n2) const;
 	float ValidityMeasure(const std::vector<uchar> & data, const std::vector<Neuron> & neurons) const;
 	float DaviesBouldinIndex(const std::vector<uchar> & data, const std::vector<Neuron> & neurons) const;
+
+	std::pair<float, float> ComputeVMAndDBIndices(QImage * img) const;
 
 };
 

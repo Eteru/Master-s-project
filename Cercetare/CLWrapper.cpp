@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <set>
 
 CLWrapper::CLWrapper()
 	: m_initialized(false), m_data(nullptr), m_data_aux(nullptr)
@@ -389,10 +390,17 @@ void CLWrapper::CMeans(QImage & img, const int centroid_count)
 	}
 }
 
-void CLWrapper::SOMSegmentation(QImage & img)
+void CLWrapper::SOMSegmentation(QImage & img, QImage * ground_truth)
 { // TODO: implemente Validity Measure & Davies-Bouldin Index
 	if (false == m_CLready)
 		return;
+
+	bool got_gt = false;
+	std::pair<float, float> gt_values;
+	if (nullptr != ground_truth) {
+		got_gt = true;
+		gt_values = ComputeVMAndDBIndices(ground_truth);
+	}
 
 	cl_int res;
 
@@ -734,4 +742,36 @@ float CLWrapper::DaviesBouldinIndex(const std::vector<uchar>& data, const std::v
 	}
 
 	return std::accumulate(D.begin(), D.end(), 0.f) / D.size();
+}
+
+std::pair<float, float> CLWrapper::ComputeVMAndDBIndices(QImage * img) const
+{
+	std::vector<uchar> values(img->byteCount());
+
+	for (int i = 0, row = 0; row < img->height(); ++row, i += img->bytesPerLine()) {
+		memcpy(img->scanLine(row), &values[i], img->bytesPerLine());
+	}
+
+	std::set<QRgb> uq_neuron;
+	for (int i = 0; i < img->height(); ++i) {
+		for (int j = 0; j < img->width(); ++j) {
+			QRgb px = img->pixel(QPoint(i, j));
+			uq_neuron.insert(px);
+		}
+	}
+
+	std::vector<Neuron> neurons;
+	for (auto n : uq_neuron) {
+		Neuron nv;
+		nv.x = qRed(n);
+		nv.y = qGreen(n);
+		nv.z = qBlue(n);
+
+		neurons.push_back(nv);
+	}
+
+	float VM = ValidityMeasure(values, neurons);
+	float DBI = DaviesBouldinIndex(values, neurons);
+
+	return std::pair<float, float>();
 }

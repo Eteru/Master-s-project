@@ -147,15 +147,30 @@ void Cercetare::OnThresholdClicked()
 
 void Cercetare::OnSOMClicked()
 {
-	/*bool ok;
-	int value = QInputDialog::getInt(this, tr("Level"),
-		tr("Threshold level:"), 0, 0, 255, 1, &ok);
+	const QString DEFAULT_DIR_KEY("default_dir");
+	QSettings MySettings;
 
-	if (ok) {
-		m_cl.Threshold(m_img, value / 255.f);
-		m_ui.labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
-	}*/
+	QString filename = QFileDialog::getOpenFileName(
+		this, "Select ground truth", MySettings.value(DEFAULT_DIR_KEY).toString());
 
-	m_cl.SOMSegmentation(m_img);
+	QImage *ground_truth = nullptr;
+	if (filename.isEmpty()) {
+		return;
+	}
+	else {
+		// save current dir
+		QDir CurrentDir;
+		MySettings.setValue(DEFAULT_DIR_KEY,
+			CurrentDir.absoluteFilePath(filename));
+
+		ground_truth = new QImage;
+		if (!ground_truth->load(filename)) {
+			Log("Couldn't open ground truth file: " + filename.toStdString());
+			delete ground_truth;
+			ground_truth = nullptr;
+		}
+	}
+
+	m_cl.SOMSegmentation(m_img, ground_truth);
 	m_ui.labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
 }
