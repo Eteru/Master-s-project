@@ -1,14 +1,15 @@
 
-#include "cercetare.hpp"
+#include "MainWindow.h"
+#include "Constants.h"
 #include <QtWidgets/QApplication>
 
 int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
-	a.setApplicationName("Placeholder");
-	a.setOrganizationName("Eteru");
+	a.setApplicationName(Constants::APP_NAME);
+	a.setOrganizationName(Constants::ORG_NAME);
 
-	Cercetare w;
+	MainWindow w;
 	w.show();
 	return a.exec();
 }

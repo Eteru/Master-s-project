@@ -41,16 +41,28 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cercetare.cpp">
+    <ClCompile Include="MainWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_cercetare.cpp">
+    <ClCompile Include="GeneratedFiles\Debug\moc_MainWindow.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_cercetare.cpp">
+    <ClCompile Include="GeneratedFiles\Release\moc_MainWindow.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="CLWrapper.cpp">
+    <ClCompile Include="Implementation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GPGPUImplementation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SequentialImplementation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParallelImplementation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Benchmark.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -61,30 +73,48 @@
     <CustomBuild Include="cercetare.qrc">
       <Filter>Resource Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="cercetare.hpp">
+    <CustomBuild Include="MainWindow.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="CLWrapper.hpp">
+    <CustomBuild Include="GPGPUImplementation.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <None Include="filters.cl">
-      <Filter>Kernels</Filter>
-    </None>
-    <None Include="segmentation.cl">
-      <Filter>Kernels</Filter>
-    </None>
-    <None Include="utils.cl">
-      <Filter>Kernels</Filter>
-    </None>
-    <None Include="som.cl">
-      <Filter>Kernels</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="structs.hpp">
+    <ClInclude Include="Constants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Structs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Implementation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SequentialImplementation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ParallelImplementation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Benchmark.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Kernels\filters.cl">
+      <Filter>Kernels</Filter>
+    </None>
+    <None Include="Kernels\segmentation.cl">
+      <Filter>Kernels</Filter>
+    </None>
+    <None Include="Kernels\som.cl">
+      <Filter>Kernels</Filter>
+    </None>
+    <None Include="Kernels\utils.cl">
+      <Filter>Kernels</Filter>
+    </None>
+    <None Include="Kernels\post_processing.cl">
+      <Filter>Kernels</Filter>
+    </None>
   </ItemGroup>
 </Project>

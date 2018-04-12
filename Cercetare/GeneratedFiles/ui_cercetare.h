@@ -15,11 +15,11 @@
 #include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
-#include <QtWidgets/QLabel>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMenuBar>
-#include <QtWidgets/QSplitter>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QSpacerItem>
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QTextBrowser>
 #include <QtWidgets/QToolBar>
@@ -43,9 +43,13 @@ public:
     QAction *actionSOM;
     QWidget *centralWidget;
     QVBoxLayout *verticalLayout;
-    QSplitter *splitter;
-    QLabel *labelImageViewerOriginal;
-    QLabel *labelImageViewerResult;
+    QHBoxLayout *horizontalLayout_2;
+    QPushButton *pushButtonSwitchView;
+    QPushButton *pushButtonZoomIn;
+    QPushButton *pushButtonZoomOut;
+    QPushButton *pushButtonZoomReset;
+    QSpacerItem *horizontalSpacer;
+    QPushButton *pushButtonToggleLog;
     QHBoxLayout *horizontalLayout;
     QTextBrowser *textBrowserLog;
     QMenuBar *menuBar;
@@ -87,23 +91,48 @@ public:
         verticalLayout->setSpacing(6);
         verticalLayout->setContentsMargins(11, 11, 11, 11);
         verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
-        splitter = new QSplitter(centralWidget);
-        splitter->setObjectName(QStringLiteral("splitter"));
-        splitter->setOrientation(Qt::Horizontal);
-        labelImageViewerOriginal = new QLabel(splitter);
-        labelImageViewerOriginal->setObjectName(QStringLiteral("labelImageViewerOriginal"));
-        splitter->addWidget(labelImageViewerOriginal);
-        labelImageViewerResult = new QLabel(splitter);
-        labelImageViewerResult->setObjectName(QStringLiteral("labelImageViewerResult"));
-        splitter->addWidget(labelImageViewerResult);
+        horizontalLayout_2 = new QHBoxLayout();
+        horizontalLayout_2->setSpacing(6);
+        horizontalLayout_2->setObjectName(QStringLiteral("horizontalLayout_2"));
+        pushButtonSwitchView = new QPushButton(centralWidget);
+        pushButtonSwitchView->setObjectName(QStringLiteral("pushButtonSwitchView"));
 
-        verticalLayout->addWidget(splitter);
+        horizontalLayout_2->addWidget(pushButtonSwitchView);
+
+        pushButtonZoomIn = new QPushButton(centralWidget);
+        pushButtonZoomIn->setObjectName(QStringLiteral("pushButtonZoomIn"));
+
+        horizontalLayout_2->addWidget(pushButtonZoomIn);
+
+        pushButtonZoomOut = new QPushButton(centralWidget);
+        pushButtonZoomOut->setObjectName(QStringLiteral("pushButtonZoomOut"));
+
+        horizontalLayout_2->addWidget(pushButtonZoomOut);
+
+        pushButtonZoomReset = new QPushButton(centralWidget);
+        pushButtonZoomReset->setObjectName(QStringLiteral("pushButtonZoomReset"));
+
+        horizontalLayout_2->addWidget(pushButtonZoomReset);
+
+        horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+        horizontalLayout_2->addItem(horizontalSpacer);
+
+        pushButtonToggleLog = new QPushButton(centralWidget);
+        pushButtonToggleLog->setObjectName(QStringLiteral("pushButtonToggleLog"));
+
+        horizontalLayout_2->addWidget(pushButtonToggleLog);
+
+
+        verticalLayout->addLayout(horizontalLayout_2);
 
         horizontalLayout = new QHBoxLayout();
         horizontalLayout->setSpacing(6);
         horizontalLayout->setObjectName(QStringLiteral("horizontalLayout"));
         textBrowserLog = new QTextBrowser(centralWidget);
         textBrowserLog->setObjectName(QStringLiteral("textBrowserLog"));
+        textBrowserLog->setEnabled(false);
+        textBrowserLog->setMaximumSize(QSize(16777215, 200));
 
         horizontalLayout->addWidget(textBrowserLog);
 
@@ -163,8 +192,11 @@ public:
         actionThreshold->setText(QApplication::translate("CercetareClass", "Threshold", Q_NULLPTR));
         actionGrayscale->setText(QApplication::translate("CercetareClass", "Grayscale", Q_NULLPTR));
         actionSOM->setText(QApplication::translate("CercetareClass", "SOM", Q_NULLPTR));
-        labelImageViewerOriginal->setText(QString());
-        labelImageViewerResult->setText(QString());
+        pushButtonSwitchView->setText(QApplication::translate("CercetareClass", "Switch View", Q_NULLPTR));
+        pushButtonZoomIn->setText(QApplication::translate("CercetareClass", "Zoom In", Q_NULLPTR));
+        pushButtonZoomOut->setText(QApplication::translate("CercetareClass", "Zoom Out", Q_NULLPTR));
+        pushButtonZoomReset->setText(QApplication::translate("CercetareClass", "Zoom Reset", Q_NULLPTR));
+        pushButtonToggleLog->setText(QApplication::translate("CercetareClass", "View Log", Q_NULLPTR));
         menuFile->setTitle(QApplication::translate("CercetareClass", "File", Q_NULLPTR));
         menuFilters->setTitle(QApplication::translate("CercetareClass", "Filters", Q_NULLPTR));
         menuSegmentation->setTitle(QApplication::translate("CercetareClass", "Segmentation", Q_NULLPTR));
