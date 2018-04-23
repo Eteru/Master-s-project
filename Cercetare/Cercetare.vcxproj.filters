@@ -65,6 +65,15 @@
     <ClCompile Include="Benchmark.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SIFT.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Octave.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CLManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="cercetare.ui">
@@ -97,6 +106,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Benchmark.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SIFT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Octave.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CLManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

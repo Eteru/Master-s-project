@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Benchmark.cpp" />
+    <ClCompile Include="CLManager.cpp" />
     <ClCompile Include="GeneratedFiles\Debug\moc_MainWindow.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -152,8 +153,10 @@
     <ClCompile Include="MainWindow.cpp" />
     <ClCompile Include="GPGPUImplementation.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Octave.cpp" />
     <ClCompile Include="ParallelImplementation.cpp" />
     <ClCompile Include="SequentialImplementation.cpp" />
+    <ClCompile Include="SIFT.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="MainWindow.h">
@@ -245,10 +248,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Benchmark.h" />
+    <ClInclude Include="CLManager.h" />
     <ClInclude Include="Constants.h" />
     <ClInclude Include="Implementation.h" />
+    <ClInclude Include="Octave.h" />
     <ClInclude Include="ParallelImplementation.h" />
     <ClInclude Include="SequentialImplementation.h" />
+    <ClInclude Include="SIFT.h" />
     <ClInclude Include="Structs.h" />
   </ItemGroup>
   <ItemGroup>

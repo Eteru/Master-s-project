@@ -72,7 +72,7 @@
       <item>
        <widget class="QTextBrowser" name="textBrowserLog">
         <property name="enabled">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <property name="maximumSize">
          <size>
@@ -124,11 +124,19 @@
      <string>Edit</string>
     </property>
     <addaction name="actionGrayscale"/>
+    <addaction name="actionResize"/>
+   </widget>
+   <widget class="QMenu" name="menuDescriptors">
+    <property name="title">
+     <string>Descriptors</string>
+    </property>
+    <addaction name="actionSIFT"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuFilters"/>
    <addaction name="menuSegmentation"/>
+   <addaction name="menuDescriptors"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -187,6 +195,16 @@
   <action name="actionSOM">
    <property name="text">
     <string>SOM</string>
+   </property>
+  </action>
+  <action name="actionResize">
+   <property name="text">
+    <string>Resize</string>
+   </property>
+  </action>
+  <action name="actionSIFT">
+   <property name="text">
+    <string>SIFT</string>
    </property>
   </action>
  </widget>

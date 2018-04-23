@@ -18,5 +18,7 @@ public:
 	virtual float KMeans(QImage & img, const int centroid_count);
 	virtual float SOMSegmentation(QImage & img, QImage * ground_truth = nullptr);
 	virtual void Threshold(QImage & img, const float value);
+
+	virtual void RunSIFT(QImage & img);
 };
 

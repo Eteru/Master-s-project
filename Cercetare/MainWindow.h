@@ -36,8 +36,11 @@ private slots:
 	void OnColorSmoothingClicked();
 	void OnKMeansClicked();
 	void OnGrayscaleClicked();
+	void OnResizeClicked();
 	void OnThresholdClicked();
 	void OnSOMClicked();
+
+	void OnSIFTClcked();
 
 private:
 	Ui::CercetareClass m_ui;

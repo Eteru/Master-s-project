@@ -25,11 +25,13 @@ public:
 	virtual float SOMSegmentation(QImage & img, QImage * ground_truth = nullptr) = 0;
 	virtual void Threshold(QImage & img, const float value) = 0;
 
+	virtual void RunSIFT(QImage & img) = 0;
+
 protected:
 	std::function<void(std::string)> m_log;
 
 	void CopyImageToBuffer(QImage & img, std::vector<uchar> & values);
-	void CopyBufferToImage(std::vector<uchar> & values, QImage & img);
+	void CopyBufferToImage(std::vector<uchar> & values, QImage & img, uint32_t row_count = 0, uint32_t col_count = 0);
 
 	void GenerateCentroids(const uint32_t count, std::vector<Centroid> & centroids);
 	void GenerateNeurons(const uint32_t count, std::vector<Neuron> & neurons);

@@ -280,3 +280,7 @@ float SequentialImplementation::SOMSegmentation(QImage & img, QImage * ground_tr
 void SequentialImplementation::Threshold(QImage & img, const float value)
 {
 }
+
+void SequentialImplementation::RunSIFT(QImage & img)
+{
+}

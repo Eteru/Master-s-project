@@ -1,7 +1,4 @@
 ﻿#pragma once
-#ifndef GPGPUImplementation_H
-#define GPGPUImplementation_H
-
 #define __CL_ENABLE_EXCEPTIONS
 
 #include <QColor>
@@ -12,6 +9,7 @@
 
 #include <CL/cl.hpp>
 
+#include "SIFT.h"
 #include "Implementation.h"
 #include "Structs.h"
 
@@ -24,6 +22,8 @@ public:
 	void SetData(QImage & img);
 
 	virtual float Grayscale(QImage & img);
+	virtual void Resize(QImage & img);
+
 	virtual void Sobel(QImage & img);
 	virtual float GaussianBlur(QImage & img);
 	virtual void Sharpening(QImage & img);
@@ -32,6 +32,8 @@ public:
 	virtual float KMeans(QImage & img, const int centroid_count);
 	virtual float SOMSegmentation(QImage & img, QImage * ground_truth = nullptr);
 	virtual void Threshold(QImage & img, const float value);
+
+	virtual void RunSIFT(QImage & img);
 
 private:
 	bool m_initialized;
@@ -47,14 +49,11 @@ private:
 	cl::size_t<3> m_origin, m_region;
 	cl::Image2D *m_data_original, *m_data_front, *m_data_back;
 
-	std::map<const char *, cl::Kernel> m_kernels;
 	cl::NDRange m_globalRange;
-	
-	void PrintDevices(const std::vector<cl::Device> & devices) const;
-	void LoadProgram(cl::Program & program, std::vector<cl::Device> & devices, std::string file);
+
+	SIFT m_sift;
 	
 	void LoadData(QImage & img);
-	void InitializeCL(void);
 
 	std::pair<float, float> CheckSegmentationNeurons(cl::Buffer & neuronsCL, std::vector<Neuron> & neurons);
 
@@ -65,5 +64,3 @@ private:
 
 	std::pair<float, float> ComputeVMAndDBIndices(QImage * img);
 };
-
-#endif // GPGPUImplementation_H

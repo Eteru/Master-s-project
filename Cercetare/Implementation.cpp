@@ -27,12 +27,23 @@ void Implementation::CopyImageToBuffer(QImage & img, std::vector<uchar>& values)
 	}
 }
 
-void Implementation::CopyBufferToImage(std::vector<uchar>& values, QImage & img)
+void Implementation::CopyBufferToImage(std::vector<uchar>& values, QImage & img, uint32_t row_count, uint32_t col_count)
 {
-	for (int i = 0, row = 0; row < img.height(); ++row, i += img.bytesPerLine())
+	int bpl = img.bytesPerLine();
+	if (row_count > 0 || col_count > 0)
 	{
-		memcpy(img.scanLine(row), &values[i], img.bytesPerLine());
+		bpl = bpl / img.width() * col_count;
 	}
+	else
+	{
+		row_count = img.height();
+	}
+
+	for (int i = 0, row = 0; row < row_count; ++row, i += bpl)
+	{
+		memcpy(img.scanLine(row), &values[i], bpl);
+	}
+	
 }
 
 void Implementation::GenerateCentroids(const uint32_t count, std::vector<Centroid> & centroids)

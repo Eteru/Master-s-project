@@ -300,3 +300,7 @@ float ParallelImplementation::SOMSegmentation(QImage & img, QImage * ground_trut
 void ParallelImplementation::Threshold(QImage & img, const float value)
 {
 }
+
+void ParallelImplementation::RunSIFT(QImage & img)
+{
+}

@@ -21,8 +21,8 @@ QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_MainWindow_t {
-    QByteArrayData data[17];
-    char stringdata0[289];
+    QByteArrayData data[19];
+    char stringdata0[318];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -46,8 +46,10 @@ QT_MOC_LITERAL(11, 178, 19), // "OnSharpeningClicked"
 QT_MOC_LITERAL(12, 198, 23), // "OnColorSmoothingClicked"
 QT_MOC_LITERAL(13, 222, 15), // "OnKMeansClicked"
 QT_MOC_LITERAL(14, 238, 18), // "OnGrayscaleClicked"
-QT_MOC_LITERAL(15, 257, 18), // "OnThresholdClicked"
-QT_MOC_LITERAL(16, 276, 12) // "OnSOMClicked"
+QT_MOC_LITERAL(15, 257, 15), // "OnResizeClicked"
+QT_MOC_LITERAL(16, 273, 18), // "OnThresholdClicked"
+QT_MOC_LITERAL(17, 292, 12), // "OnSOMClicked"
+QT_MOC_LITERAL(18, 305, 12) // "OnSIFTClcked"
 
     },
     "MainWindow\0OnSwitchViewClicked\0\0"
@@ -57,7 +59,8 @@ QT_MOC_LITERAL(16, 276, 12) // "OnSOMClicked"
     "OnSobelClicked\0OnGaussianBlurClicked\0"
     "OnSharpeningClicked\0OnColorSmoothingClicked\0"
     "OnKMeansClicked\0OnGrayscaleClicked\0"
-    "OnThresholdClicked\0OnSOMClicked"
+    "OnResizeClicked\0OnThresholdClicked\0"
+    "OnSOMClicked\0OnSIFTClcked"
 };
 #undef QT_MOC_LITERAL
 
@@ -67,7 +70,7 @@ static const uint qt_meta_data_MainWindow[] = {
        7,       // revision
        0,       // classname
        0,    0, // classinfo
-      15,   14, // methods
+      17,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -75,23 +78,27 @@ static const uint qt_meta_data_MainWindow[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    0,   89,    2, 0x08 /* Private */,
-       3,    0,   90,    2, 0x08 /* Private */,
-       4,    0,   91,    2, 0x08 /* Private */,
-       5,    0,   92,    2, 0x08 /* Private */,
-       6,    0,   93,    2, 0x08 /* Private */,
-       7,    0,   94,    2, 0x08 /* Private */,
-       8,    0,   95,    2, 0x08 /* Private */,
-       9,    0,   96,    2, 0x08 /* Private */,
-      10,    0,   97,    2, 0x08 /* Private */,
-      11,    0,   98,    2, 0x08 /* Private */,
-      12,    0,   99,    2, 0x08 /* Private */,
-      13,    0,  100,    2, 0x08 /* Private */,
-      14,    0,  101,    2, 0x08 /* Private */,
-      15,    0,  102,    2, 0x08 /* Private */,
-      16,    0,  103,    2, 0x08 /* Private */,
+       1,    0,   99,    2, 0x08 /* Private */,
+       3,    0,  100,    2, 0x08 /* Private */,
+       4,    0,  101,    2, 0x08 /* Private */,
+       5,    0,  102,    2, 0x08 /* Private */,
+       6,    0,  103,    2, 0x08 /* Private */,
+       7,    0,  104,    2, 0x08 /* Private */,
+       8,    0,  105,    2, 0x08 /* Private */,
+       9,    0,  106,    2, 0x08 /* Private */,
+      10,    0,  107,    2, 0x08 /* Private */,
+      11,    0,  108,    2, 0x08 /* Private */,
+      12,    0,  109,    2, 0x08 /* Private */,
+      13,    0,  110,    2, 0x08 /* Private */,
+      14,    0,  111,    2, 0x08 /* Private */,
+      15,    0,  112,    2, 0x08 /* Private */,
+      16,    0,  113,    2, 0x08 /* Private */,
+      17,    0,  114,    2, 0x08 /* Private */,
+      18,    0,  115,    2, 0x08 /* Private */,
 
  // slots: parameters
+    QMetaType::Void,
+    QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
@@ -130,8 +137,10 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 10: _t->OnColorSmoothingClicked(); break;
         case 11: _t->OnKMeansClicked(); break;
         case 12: _t->OnGrayscaleClicked(); break;
-        case 13: _t->OnThresholdClicked(); break;
-        case 14: _t->OnSOMClicked(); break;
+        case 13: _t->OnResizeClicked(); break;
+        case 14: _t->OnThresholdClicked(); break;
+        case 15: _t->OnSOMClicked(); break;
+        case 16: _t->OnSIFTClcked(); break;
         default: ;
         }
     }
@@ -163,13 +172,13 @@ int MainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 15)
+        if (_id < 17)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 15;
+        _id -= 17;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 15)
+        if (_id < 17)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 15;
+        _id -= 17;
     }
     return _id;
 }

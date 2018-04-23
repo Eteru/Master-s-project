@@ -1,6 +1,7 @@
 ﻿
 #include "GPGPUImplementation.h"
 #include "Constants.h"
+#include "CLManager.h"
 
 #include <cstdlib>
 #include <ctime>
@@ -14,7 +15,14 @@ GPGPUImplementation::GPGPUImplementation()
 	std::time_t t;
 	std::srand(static_cast <unsigned> (time(&t)));
 	
-	InitializeCL();
+	if (false == CLManager::GetInstance()->Init())
+	{
+		return;
+	}
+
+	m_contextCL = *CLManager::GetInstance()->GetContext();
+	m_queue = *CLManager::GetInstance()->GetQueue();
+	m_CLready = true;
 }
 
 GPGPUImplementation::~GPGPUImplementation()
@@ -38,49 +46,6 @@ GPGPUImplementation::~GPGPUImplementation()
 	}
 }
 
-
-void GPGPUImplementation::PrintDevices(const std::vector<cl::Device>& devices) const
-{
-	size_t i = 0;
-	for (cl::Device d : devices) {
-		std::cout << "Device ID: " << i++ << std::endl;
-		std::cout << "\tDevice Name: " << d.getInfo<CL_DEVICE_NAME>() << std::endl;
-		std::cout << "\tDevice Type: " << d.getInfo<CL_DEVICE_TYPE>();
-		std::cout << " (GPU: " << CL_DEVICE_TYPE_GPU << ", CPU: " << CL_DEVICE_TYPE_CPU << ")" << std::endl;
-		std::cout << "\tDevice Vendor: " << d.getInfo<CL_DEVICE_VENDOR>() << std::endl;
-		std::cout << "\tDevice Max Compute Units: " << d.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() << std::endl;
-		std::cout << "\tDevice Global Memory: " << d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() << std::endl;
-		std::cout << "\tDevice Max Clock Frequency: " << d.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << std::endl;
-		std::cout << "\tDevice Max Allocateable Memory: " << d.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>() << std::endl;
-		std::cout << "\tDevice Local Memory: " << d.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
-		std::cout << "\tDevice Available: " << d.getInfo< CL_DEVICE_AVAILABLE>() << std::endl;
-	}
-	std::cout << std::endl;
-}
-
-void GPGPUImplementation::LoadProgram(cl::Program & program, std::vector<cl::Device> & devices, std::string file)
-{
-	std::ifstream sourceFile(file);
-	std::string sourceCode(
-		std::istreambuf_iterator<char>(sourceFile),
-		(std::istreambuf_iterator<char>()));
-	sourceFile.close();
-	
-	try
-	{
-		cl::Program::Sources source(1, std::make_pair(sourceCode.c_str(), sourceCode.length() + 1));
-		// Make program of the source code in the context
-		program = cl::Program(m_contextCL, source);
-		// Build program for these specific devices
-
-		program.build(devices);
-	}
-	catch (const cl::Error & err)
-	{
-		std::cout << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]) << std::endl;
-	}
-}
-
 void GPGPUImplementation::LoadData(QImage & img)
 {
 	cl_int res;
@@ -95,6 +60,24 @@ void GPGPUImplementation::LoadData(QImage & img)
 
 	CopyImageToBuffer(img, m_values_orig);
 
+	if (nullptr != m_data_original)
+	{
+		delete m_data_original;
+		m_data_original = nullptr;
+	}
+
+	if (nullptr != m_data_front)
+	{
+		delete m_data_front;
+		m_data_front = nullptr;
+	}
+
+	if (nullptr != m_data_back)
+	{
+		delete m_data_back;
+		m_data_back = nullptr;
+	}
+
 	try
 	{
 		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8);
@@ -103,9 +86,10 @@ void GPGPUImplementation::LoadData(QImage & img)
 		m_data_front = new cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
 		m_data_back = new cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
 
-		res = m_queue.enqueueWriteImage(*m_data_original, CL_TRUE, m_origin, m_region, 0, 0, img.bits());
-
 		m_globalRange = cl::NDRange(m_width, m_height);
+
+		res = m_queue.enqueueWriteImage(*m_data_original, CL_TRUE, m_origin, m_region, 0, 0, img.bits());
+		m_queue.finish();
 	}
 	catch (const cl::Error & err)
 	{
@@ -132,7 +116,7 @@ float GPGPUImplementation::Grayscale(QImage & img)
 
 	try
 	{
-		cl::Kernel & kernel = m_kernels[Constants::KERNEL_GRAYSCALE];
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_GRAYSCALE);
 		// Set arguments to kernel
 		res = kernel.setArg(0, *m_data_original);
 		res = kernel.setArg(1, *m_data_front);
@@ -157,6 +141,46 @@ float GPGPUImplementation::Grayscale(QImage & img)
 	return ret;
 }
 
+void GPGPUImplementation::Resize(QImage & img)
+{
+	if (false == m_CLready)
+	{
+		return;
+	}
+
+	cl_int res;
+
+	try
+	{
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_RESIZE);
+
+		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8);
+
+		cl::Image2D resized_img = cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width / 2, m_height / 2);
+		// Set arguments to kernel
+		res = kernel.setArg(0, *m_data_original);
+		res = kernel.setArg(1, resized_img);
+		res = kernel.setArg(2, 2.f);
+
+		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(m_width / 2, m_height / 2), cl::NullRange);
+
+		cl::size_t<3> region;
+		region[0] = m_width / 2;
+		region[1] = m_height / 2;
+		region[2] = 1;
+
+		res = m_queue.enqueueReadImage(resized_img, CL_TRUE, m_origin, region, 0, 0, &m_values.front());
+
+		m_queue.finish();
+
+		CopyBufferToImage(m_values, img, m_height / 2, m_width / 2);
+	}
+	catch (const cl::Error & err)
+	{
+		std::cerr << "Resize: " << err.what() << " with error: " << err.err() << std::endl;
+	}
+}
+
 void GPGPUImplementation::Sobel(QImage & img)
 {
 	if (false == m_CLready)
@@ -168,7 +192,7 @@ void GPGPUImplementation::Sobel(QImage & img)
 
 	try
 	{
-		cl::Kernel & kernel = m_kernels[Constants::KERNEL_CONVOLUTE];
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
 		// first is filter size
 		std::vector<float> conv = { 3, -1.f, 0.f, 1.f, -2.f, 0, 2.f, -1.f, 0, 1.f };
 
@@ -216,7 +240,7 @@ float GPGPUImplementation::GaussianBlur(QImage & img)
 
 	try
 	{
-		cl::Kernel & kernel = m_kernels[Constants::KERNEL_CONVOLUTE];
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
 		cl::Buffer convCL = cl::Buffer(m_contextCL, CL_MEM_READ_ONLY, gaussian_kernel.size() * sizeof(float), 0, 0);
 		m_queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, gaussian_kernel.size() * sizeof(float), &gaussian_kernel[0], 0, NULL);
 
@@ -266,7 +290,7 @@ void GPGPUImplementation::Sharpening(QImage & img)
 
 	try
 	{
-		cl::Kernel & kernel = m_kernels[Constants::KERNEL_SHARPNESS];
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_SHARPNESS);
 		cl::Buffer convCL = cl::Buffer(m_contextCL, CL_MEM_READ_ONLY, laplacian_kernel.size() * sizeof(float), 0, 0);
 		m_queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, laplacian_kernel.size() * sizeof(float), &laplacian_kernel[0], 0, NULL);
 
@@ -304,7 +328,7 @@ void GPGPUImplementation::ColorSmoothing(QImage & img)
 
 	try
 	{
-		cl::Kernel & kernel = m_kernels[Constants::KERNEL_COLOR_SMOOTHING];
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_COLOR_SMOOTHING);
 		cl::Buffer convCL = cl::Buffer(m_contextCL, CL_MEM_READ_ONLY, conv.size() * sizeof(float), 0, 0);
 		m_queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, conv.size() * sizeof(float), &conv[0], 0, NULL);
 
@@ -343,9 +367,9 @@ float GPGPUImplementation::KMeans(QImage & img, const int centroid_count)
 
 	try
 	{
-		cl::Kernel & kmeans = m_kernels[Constants::KERNEL_KMEANS];
-		cl::Kernel & kmeans_draw = m_kernels[Constants::KERNEL_KMEANS_DRAW];
-		cl::Kernel & kmeans_update_centroids = m_kernels[Constants::KERNEL_KMEANS_UPDATE_CENTROIDS];
+		cl::Kernel & kmeans = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_KMEANS);
+		cl::Kernel & kmeans_draw = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_KMEANS_DRAW);
+		cl::Kernel & kmeans_update_centroids = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_KMEANS_UPDATE_CENTROIDS);
 
 		cl::Buffer centroidsCL = cl::Buffer(m_contextCL, CL_MEM_READ_WRITE, centroids.size() * sizeof(Centroid), 0, 0);
 		res = m_queue.enqueueWriteBuffer(centroidsCL, CL_TRUE, 0, centroids.size() * sizeof(Centroid), &centroids[0], 0, NULL);
@@ -431,10 +455,10 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 
 	try
 	{
-		cl::Kernel & som_find_bmu = m_kernels[Constants::KERNEL_SOM_FIND_BMU];
-		cl::Kernel & som_update_wieghts = m_kernels[Constants::KERNEL_SOM_UPDATE_WEIGHTS];
-		cl::Kernel & som_draw = m_kernels[Constants::KERNEL_SOM_DRAW];
-		cl::Kernel & noise_reduction = m_kernels[Constants::KERNEL_POST_NOISE_REDUCTION];
+		cl::Kernel & som_find_bmu = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_SOM_FIND_BMU);
+		cl::Kernel & som_update_wieghts = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_SOM_UPDATE_WEIGHTS);
+		cl::Kernel & som_draw = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_SOM_DRAW);
+		cl::Kernel & noise_reduction = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_POST_NOISE_REDUCTION);
 
 		cl::Buffer neuronsCL = cl::Buffer(m_contextCL, CL_MEM_READ_ONLY, neurons.size() * sizeof(Neuron), 0, 0);
 		m_queue.enqueueWriteBuffer(neuronsCL, CL_TRUE, 0, neurons.size() * sizeof(Neuron), &neurons[0], 0, NULL);
@@ -545,7 +569,7 @@ void GPGPUImplementation::Threshold(QImage & img, const float value)
 
 	try
 	{
-		cl::Kernel & kernel = m_kernels[Constants::KERNEL_THRESHOLD];
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_THRESHOLD);
 		// Set arguments to kernel
 		res = kernel.setArg(0, *m_data_original);
 		res = kernel.setArg(1, *m_data_front);
@@ -565,61 +589,21 @@ void GPGPUImplementation::Threshold(QImage & img, const float value)
 	}
 }
 
-void GPGPUImplementation::InitializeCL()
+void GPGPUImplementation::RunSIFT(QImage & img)
 {
-	// Used for exit codes
-	cl_int res;
-
-	// Get available platforms
-	std::vector<cl::Platform> platforms;
-	std::vector<cl::Device> devices;
-	cl::Platform::get(&platforms);
-	// Select the default platform and create a context using this platform and the GPU
-	cl_context_properties cps[] = 
-	{
-		CL_CONTEXT_PLATFORM,
-		(cl_context_properties)(platforms[0])(),
-		0
-	};
-
 	try
 	{
-		m_contextCL = cl::Context(CL_DEVICE_TYPE_GPU, cps);
-		// Get a list of devices on this platform
-		devices = m_contextCL.getInfo<CL_CONTEXT_DEVICES>();
-		PrintDevices(devices);
-		// Create a command queue and use the first device
-		m_queue = cl::CommandQueue(m_contextCL, devices[0]);
+		cl::Image2D * sift_output = m_sift.Run(m_data_original, m_width, m_height);
 
-		cl::Program program;
-		LoadProgram(program, devices, "Kernels/utils.cl");
-		m_kernels[Constants::KERNEL_GRAYSCALE] = cl::Kernel(program, Constants::KERNEL_GRAYSCALE);
+		cl_int res = m_queue.enqueueReadImage(*sift_output, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
 
-		LoadProgram(program, devices, "Kernels/filters.cl");
-		m_kernels[Constants::KERNEL_CONVOLUTE] = cl::Kernel(program, Constants::KERNEL_CONVOLUTE);
-		m_kernels[Constants::KERNEL_COLOR_SMOOTHING] = cl::Kernel(program, Constants::KERNEL_COLOR_SMOOTHING);
-		m_kernels[Constants::KERNEL_SHARPNESS] = cl::Kernel(program, Constants::KERNEL_SHARPNESS);
+		m_queue.finish();
 
-		LoadProgram(program, devices, "Kernels/segmentation.cl");
-		m_kernels[Constants::KERNEL_KMEANS] = cl::Kernel(program, Constants::KERNEL_KMEANS);
-		m_kernels[Constants::KERNEL_KMEANS_DRAW] = cl::Kernel(program, Constants::KERNEL_KMEANS_DRAW);
-		m_kernels[Constants::KERNEL_KMEANS_UPDATE_CENTROIDS] = cl::Kernel(program, Constants::KERNEL_KMEANS_UPDATE_CENTROIDS);
-		m_kernels[Constants::KERNEL_THRESHOLD] = cl::Kernel(program, Constants::KERNEL_THRESHOLD);
-
-		LoadProgram(program, devices, "Kernels/som.cl");
-		m_kernels[Constants::KERNEL_SOM_FIND_BMU] = cl::Kernel(program, Constants::KERNEL_SOM_FIND_BMU);
-		m_kernels[Constants::KERNEL_SOM_UPDATE_WEIGHTS] = cl::Kernel(program, Constants::KERNEL_SOM_UPDATE_WEIGHTS);
-		m_kernels[Constants::KERNEL_SOM_DRAW] = cl::Kernel(program, Constants::KERNEL_SOM_DRAW);
-
-		LoadProgram(program, devices, "Kernels/post_processing.cl");
-		m_kernels[Constants::KERNEL_POST_NOISE_REDUCTION] = cl::Kernel(program, Constants::KERNEL_POST_NOISE_REDUCTION);
-
-
-		m_CLready = true;
+		CopyBufferToImage(m_values, img);
 	}
 	catch (const cl::Error & err)
 	{
-		std::cerr << "InitializeCL: " << err.what() << " with error: " << err.err() << std::endl;
+		std::cerr << "RunSIFT: " << err.what() << " with error: " << err.err() << std::endl;
 	}
 }
 

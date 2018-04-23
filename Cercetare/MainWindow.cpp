@@ -121,12 +121,6 @@ void MainWindow::LoadTexture(QString imgpath)
 	labelImageViewerOriginal->adjustSize();
 	labelImageViewerResult->adjustSize();
 
-	//m_ui.labelImageViewerOriginal->pixmap()->size().scale(sz, Qt::KeepAspectRatio);
-	//m_ui.labelImageViewerResult->pixmap()->size().scale(sz, Qt::KeepAspectRatio);
-	//
-	//m_ui.labelImageViewerOriginal->resize(m_ui.labelImageViewerOriginal->pixmap()->size());
-	//m_ui.labelImageViewerResult->resize(m_ui.labelImageViewerResult->pixmap()->size());
-
 	m_cl.SetData(m_img);
 }
 
@@ -145,6 +139,7 @@ void MainWindow::SetActions()
 
 	// Edit
 	connect(m_ui.actionGrayscale, SIGNAL(triggered()), this, SLOT(OnGrayscaleClicked()));
+	connect(m_ui.actionResize, SIGNAL(triggered()), this, SLOT(OnResizeClicked()));
 
 
 	connect(m_ui.actionSobel, SIGNAL(triggered()), this, SLOT(OnSobelClicked()));
@@ -156,6 +151,10 @@ void MainWindow::SetActions()
 	connect(m_ui.actionK_Means, SIGNAL(triggered()), this, SLOT(OnKMeansClicked()));
 	connect(m_ui.actionThreshold, SIGNAL(triggered()), this, SLOT(OnThresholdClicked()));
 	connect(m_ui.actionSOM, SIGNAL(triggered()), this, SLOT(OnSOMClicked()));
+
+	// Descriptors
+	connect(m_ui.actionSIFT, SIGNAL(triggered()), this, SLOT(OnSIFTClcked()));
+
 }
 
 void MainWindow::ScaleImage(double factor)
@@ -277,6 +276,13 @@ void MainWindow::OnGrayscaleClicked()
 	labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
 }
 
+void MainWindow::OnResizeClicked()
+{
+
+	m_cl.Resize(m_img);
+	labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
+}
+
 void MainWindow::OnThresholdClicked()
 {
 	bool ok;
@@ -318,4 +324,10 @@ void MainWindow::OnSOMClicked()
 
 	delete ground_truth;
 	ground_truth = nullptr;
+}
+
+void MainWindow::OnSIFTClcked()
+{
+	m_cl.RunSIFT(m_img);
+	labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
 }

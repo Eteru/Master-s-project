@@ -41,6 +41,8 @@ public:
     QAction *actionThreshold;
     QAction *actionGrayscale;
     QAction *actionSOM;
+    QAction *actionResize;
+    QAction *actionSIFT;
     QWidget *centralWidget;
     QVBoxLayout *verticalLayout;
     QHBoxLayout *horizontalLayout_2;
@@ -57,6 +59,7 @@ public:
     QMenu *menuFilters;
     QMenu *menuSegmentation;
     QMenu *menuEdit;
+    QMenu *menuDescriptors;
     QToolBar *mainToolBar;
     QStatusBar *statusBar;
 
@@ -85,6 +88,10 @@ public:
         actionGrayscale->setObjectName(QStringLiteral("actionGrayscale"));
         actionSOM = new QAction(CercetareClass);
         actionSOM->setObjectName(QStringLiteral("actionSOM"));
+        actionResize = new QAction(CercetareClass);
+        actionResize->setObjectName(QStringLiteral("actionResize"));
+        actionSIFT = new QAction(CercetareClass);
+        actionSIFT->setObjectName(QStringLiteral("actionSIFT"));
         centralWidget = new QWidget(CercetareClass);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         verticalLayout = new QVBoxLayout(centralWidget);
@@ -131,7 +138,7 @@ public:
         horizontalLayout->setObjectName(QStringLiteral("horizontalLayout"));
         textBrowserLog = new QTextBrowser(centralWidget);
         textBrowserLog->setObjectName(QStringLiteral("textBrowserLog"));
-        textBrowserLog->setEnabled(false);
+        textBrowserLog->setEnabled(true);
         textBrowserLog->setMaximumSize(QSize(16777215, 200));
 
         horizontalLayout->addWidget(textBrowserLog);
@@ -151,6 +158,8 @@ public:
         menuSegmentation->setObjectName(QStringLiteral("menuSegmentation"));
         menuEdit = new QMenu(menuBar);
         menuEdit->setObjectName(QStringLiteral("menuEdit"));
+        menuDescriptors = new QMenu(menuBar);
+        menuDescriptors->setObjectName(QStringLiteral("menuDescriptors"));
         CercetareClass->setMenuBar(menuBar);
         mainToolBar = new QToolBar(CercetareClass);
         mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
@@ -163,6 +172,7 @@ public:
         menuBar->addAction(menuEdit->menuAction());
         menuBar->addAction(menuFilters->menuAction());
         menuBar->addAction(menuSegmentation->menuAction());
+        menuBar->addAction(menuDescriptors->menuAction());
         menuFile->addAction(actionOpen_image);
         menuFile->addAction(actionSave_image);
         menuFilters->addAction(actionSobel);
@@ -173,6 +183,8 @@ public:
         menuSegmentation->addAction(actionThreshold);
         menuSegmentation->addAction(actionSOM);
         menuEdit->addAction(actionGrayscale);
+        menuEdit->addAction(actionResize);
+        menuDescriptors->addAction(actionSIFT);
 
         retranslateUi(CercetareClass);
 
@@ -192,6 +204,8 @@ public:
         actionThreshold->setText(QApplication::translate("CercetareClass", "Threshold", Q_NULLPTR));
         actionGrayscale->setText(QApplication::translate("CercetareClass", "Grayscale", Q_NULLPTR));
         actionSOM->setText(QApplication::translate("CercetareClass", "SOM", Q_NULLPTR));
+        actionResize->setText(QApplication::translate("CercetareClass", "Resize", Q_NULLPTR));
+        actionSIFT->setText(QApplication::translate("CercetareClass", "SIFT", Q_NULLPTR));
         pushButtonSwitchView->setText(QApplication::translate("CercetareClass", "Switch View", Q_NULLPTR));
         pushButtonZoomIn->setText(QApplication::translate("CercetareClass", "Zoom In", Q_NULLPTR));
         pushButtonZoomOut->setText(QApplication::translate("CercetareClass", "Zoom Out", Q_NULLPTR));
@@ -201,6 +215,7 @@ public:
         menuFilters->setTitle(QApplication::translate("CercetareClass", "Filters", Q_NULLPTR));
         menuSegmentation->setTitle(QApplication::translate("CercetareClass", "Segmentation", Q_NULLPTR));
         menuEdit->setTitle(QApplication::translate("CercetareClass", "Edit", Q_NULLPTR));
+        menuDescriptors->setTitle(QApplication::translate("CercetareClass", "Descriptors", Q_NULLPTR));
     } // retranslateUi
 
 };
