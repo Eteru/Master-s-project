@@ -5,6 +5,7 @@
 #include <iostream>
 
 Octave::Octave(cl::Image2D * image, uint32_t w, uint32_t h, uint32_t size)
+	: m_width(w), m_height(h)
 {
 	m_context = *CLManager::GetInstance()->GetContext();
 	m_queue = *CLManager::GetInstance()->GetQueue();
@@ -41,33 +42,46 @@ Octave::~Octave()
 	//}
 }
 
+cl::Image2D * Octave::GetImage(uint32_t idx)
+{
+	return m_images[idx];
+}
+
 void Octave::Blur()
 {
 	std::vector<std::vector<float>> gaussian_kernels =
 	{
 		{
-			3.f,
-			0.102059f, 0.115349f, 0.102059f,
-			0.115349f, 0.130371f, 0.115349f,
-			0.102059f, 0.115349f, 0.102059f
+			5.f,
+			0.023528f, 0.033969f, 0.038393f, 0.033969f, 0.023528f,
+			0.033969f, 0.049045f, 0.055432f, 0.049045f, 0.033969f,
+			0.038393f, 0.055432f, 0.062651f, 0.055432f, 0.038393f,
+			0.033969f, 0.049045f, 0.055432f, 0.049045f, 0.033969f,
+			0.023528f, 0.033969f, 0.038393f, 0.033969f, 0.023528f
 		},
 		{
-			3.f,
-			0.106504f, 0.113341f, 0.106504f,
-			0.113341f, 0.120617f, 0.113341f,
-			0.106504f, 0.113341f, 0.106504f
+			5.f,
+			0.033565f, 0.038140f, 0.039799f, 0.038140f, 0.033565f,
+			0.038140f, 0.043337f, 0.045223f, 0.043337f, 0.038140f,
+			0.039799f, 0.045223f, 0.047190f, 0.045223f, 0.039799f,
+			0.038140f, 0.043337f, 0.045223f, 0.043337f, 0.038140f,
+			0.033565f, 0.038140f, 0.039799f, 0.038140f, 0.033565f
 		},
 		{
-			3.f,
-			0.108785f, 0.112255f, 0.108785f,
-			0.112255f, 0.115836f, 0.112255f,
-			0.108785f, 0.112255f, 0.108785f
+			5.f,
+			0.036676f, 0.039104f, 0.039949f, 0.039104f, 0.036676f,
+			0.039104f, 0.041694f, 0.042594f, 0.041694f, 0.039104f,
+			0.039949f, 0.042594f, 0.043514f, 0.042594f, 0.039949f,
+			0.039104f, 0.041694f, 0.042594f, 0.041694f, 0.039104f,
+			0.036676f, 0.039104f, 0.039949f, 0.039104f, 0.036676f
 		},
 		{
-			3.f,
-			0.109941f, 0.111691f, 0.109941f,
-			0.111691f, 0.113469f, 0.111691f,
-			0.109941f, 0.111691f, 0.109941f
+			5.f,
+			0.037986f, 0.039473f, 0.039982f, 0.039473f, 0.037986f,
+			0.039473f, 0.041019f, 0.041547f, 0.041019f, 0.039473f,
+			0.039982f, 0.041547f, 0.042082f, 0.041547f, 0.039982f,
+			0.039473f, 0.041019f, 0.041547f, 0.041019f, 0.039473f,
+			0.037986f, 0.039473f, 0.039982f, 0.039473f, 0.037986f
 		}
 	};
 
@@ -99,4 +113,31 @@ void Octave::Blur()
 
 void Octave::DoG()
 {
+	try
+	{
+		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8);
+
+		cl_int res;
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_IMAGE_DIFFERENCE);
+
+		for (size_t i = 1; i < m_images.size(); ++i)
+		{
+			cl::Image2D *img = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
+			// Set arguments to kernel
+			res = kernel.setArg(0, *m_images[i-1]);
+			res = kernel.setArg(1, *m_images[i]);
+			res = kernel.setArg(2, *img);
+
+			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange);
+			m_queue.finish();
+
+			delete m_images[i - 1];
+			m_images[i - 1] = img;
+		}
+
+	}
+	catch (const cl::Error & err)
+	{
+		std::cerr << "Octave::DoG: " << err.what() << " with error: " << err.err() << std::endl;
+	}
 }

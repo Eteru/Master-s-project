@@ -20,8 +20,8 @@ __kernel void grayscale(read_only image2d_t input, write_only image2d_t output)
 }
 
 __kernel void resize_image(
-	__read_only  image2d_t sourceImage,
-	__write_only image2d_t targetImage,
+	read_only  image2d_t sourceImage,
+	write_only image2d_t targetImage,
 	float reduce_by)
 {
 	int2 posOut = { get_global_id(0), get_global_id(1) };
@@ -29,4 +29,22 @@ __kernel void resize_image(
 
 	uint4 pixel = read_imageui(sourceImage, srcSampler, posIn);
 	write_imageui(targetImage, posOut, pixel);
+}
+
+__kernel void difference(
+	read_only  image2d_t first,
+	read_only   image2d_t second,
+	write_only   image2d_t output)
+{
+	int2 pos = { get_global_id(0), get_global_id(1) };
+
+	int4 px1 = read_imagei(first, srcSampler, pos);
+	int4 px2 = read_imagei(second, srcSampler, pos);
+	int3 diff = (px1.xyz - px2.xyz);
+	diff = clamp(diff, (int)0, (int)255);
+
+	//printf("(%d, %d, %d) - (%d, %d, %d) = (%d, %d, %d)\n",
+	//	px1.x, px1.y, px1.z, px2.x, px2.y, px2.z, diff.x, diff.y, diff.z);
+
+	write_imagei(output, pos, (int4)(diff, 255));
 }

@@ -23,4 +23,5 @@ namespace Constants
 	const std::string KERNEL_POST_NOISE_REDUCTION = "noise_reduction";
 	const std::string KERNEL_POST_REGION_MERGING = "region_merging";
 	const std::string KERNEL_RESIZE = "resize_image";
+	const std::string KERNEL_IMAGE_DIFFERENCE = "difference";
 }

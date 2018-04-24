@@ -593,9 +593,19 @@ void GPGPUImplementation::RunSIFT(QImage & img)
 {
 	try
 	{
-		cl::Image2D * sift_output = m_sift.Run(m_data_original, m_width, m_height);
+		cl_int res;
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_GRAYSCALE);
+		// Set arguments to kernel
+		res = kernel.setArg(0, *m_data_original);
+		res = kernel.setArg(1, *m_data_front);
 
-		cl_int res = m_queue.enqueueReadImage(*sift_output, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
+		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_globalRange, cl::NullRange);
+
+		m_queue.finish();
+
+		cl::Image2D * sift_output = m_sift.Run(m_data_front, m_width, m_height);
+
+		res = m_queue.enqueueReadImage(*sift_output, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
 
 		m_queue.finish();
 

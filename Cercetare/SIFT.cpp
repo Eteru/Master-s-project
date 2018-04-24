@@ -62,5 +62,5 @@ cl::Image2D * SIFT::Run(cl::Image2D * image, uint32_t w, uint32_t h)
 		o.DoG();
 	}
 
-	return image;
+	return m_octaves[0].GetImage(3);
 }

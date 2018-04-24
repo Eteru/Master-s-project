@@ -52,6 +52,7 @@ bool CLManager::Init()
 		LoadProgram(program, devices, "Kernels/utils.cl");
 		m_kernels[Constants::KERNEL_GRAYSCALE] = cl::Kernel(program, Constants::KERNEL_GRAYSCALE.c_str());
 		m_kernels[Constants::KERNEL_RESIZE] = cl::Kernel(program, Constants::KERNEL_RESIZE.c_str());
+		m_kernels[Constants::KERNEL_IMAGE_DIFFERENCE] = cl::Kernel(program, Constants::KERNEL_IMAGE_DIFFERENCE.c_str());
 
 		LoadProgram(program, devices, "Kernels/filters.cl");
 		m_kernels[Constants::KERNEL_CONVOLUTE] = cl::Kernel(program, Constants::KERNEL_CONVOLUTE.c_str());
