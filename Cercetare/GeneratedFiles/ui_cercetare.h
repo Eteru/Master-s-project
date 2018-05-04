@@ -43,6 +43,7 @@ public:
     QAction *actionSOM;
     QAction *actionResize;
     QAction *actionSIFT;
+    QAction *actionBenchmark;
     QWidget *centralWidget;
     QVBoxLayout *verticalLayout;
     QHBoxLayout *horizontalLayout_2;
@@ -60,6 +61,7 @@ public:
     QMenu *menuSegmentation;
     QMenu *menuEdit;
     QMenu *menuDescriptors;
+    QMenu *menuHelp;
     QToolBar *mainToolBar;
     QStatusBar *statusBar;
 
@@ -92,6 +94,8 @@ public:
         actionResize->setObjectName(QStringLiteral("actionResize"));
         actionSIFT = new QAction(CercetareClass);
         actionSIFT->setObjectName(QStringLiteral("actionSIFT"));
+        actionBenchmark = new QAction(CercetareClass);
+        actionBenchmark->setObjectName(QStringLiteral("actionBenchmark"));
         centralWidget = new QWidget(CercetareClass);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         verticalLayout = new QVBoxLayout(centralWidget);
@@ -160,6 +164,8 @@ public:
         menuEdit->setObjectName(QStringLiteral("menuEdit"));
         menuDescriptors = new QMenu(menuBar);
         menuDescriptors->setObjectName(QStringLiteral("menuDescriptors"));
+        menuHelp = new QMenu(menuBar);
+        menuHelp->setObjectName(QStringLiteral("menuHelp"));
         CercetareClass->setMenuBar(menuBar);
         mainToolBar = new QToolBar(CercetareClass);
         mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
@@ -173,6 +179,7 @@ public:
         menuBar->addAction(menuFilters->menuAction());
         menuBar->addAction(menuSegmentation->menuAction());
         menuBar->addAction(menuDescriptors->menuAction());
+        menuBar->addAction(menuHelp->menuAction());
         menuFile->addAction(actionOpen_image);
         menuFile->addAction(actionSave_image);
         menuFilters->addAction(actionSobel);
@@ -185,6 +192,7 @@ public:
         menuEdit->addAction(actionGrayscale);
         menuEdit->addAction(actionResize);
         menuDescriptors->addAction(actionSIFT);
+        menuHelp->addAction(actionBenchmark);
 
         retranslateUi(CercetareClass);
 
@@ -206,6 +214,7 @@ public:
         actionSOM->setText(QApplication::translate("CercetareClass", "SOM", Q_NULLPTR));
         actionResize->setText(QApplication::translate("CercetareClass", "Resize", Q_NULLPTR));
         actionSIFT->setText(QApplication::translate("CercetareClass", "SIFT", Q_NULLPTR));
+        actionBenchmark->setText(QApplication::translate("CercetareClass", "Benchmark", Q_NULLPTR));
         pushButtonSwitchView->setText(QApplication::translate("CercetareClass", "Switch View", Q_NULLPTR));
         pushButtonZoomIn->setText(QApplication::translate("CercetareClass", "Zoom In", Q_NULLPTR));
         pushButtonZoomOut->setText(QApplication::translate("CercetareClass", "Zoom Out", Q_NULLPTR));
@@ -216,6 +225,7 @@ public:
         menuSegmentation->setTitle(QApplication::translate("CercetareClass", "Segmentation", Q_NULLPTR));
         menuEdit->setTitle(QApplication::translate("CercetareClass", "Edit", Q_NULLPTR));
         menuDescriptors->setTitle(QApplication::translate("CercetareClass", "Descriptors", Q_NULLPTR));
+        menuHelp->setTitle(QApplication::translate("CercetareClass", "Help", Q_NULLPTR));
     } // retranslateUi
 
 };

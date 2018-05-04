@@ -81,14 +81,14 @@ __kernel void som_draw(
 	int neuron_idx = -1;
 	const int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
 
-	uint4 rgba = read_imageui(input, srcSampler, imgCoords);
+	uint4 rgba = convert_uint4_sat_rte(read_imagef(input, srcSampler, imgCoords) * 255);
+	//printf("%f, %f, %f\n", neurons[0].x / 255.f, neurons[0].y / 255.f, neurons[0].z / 255.f);
 
 	float d;
 	uint dist_X;
 	uint dist_Y;
 	uint dist_Z;
 
-	#pragma unroll 2
 	for (int i = 0; i < neuron_count; ++i)
 	{
 		dist_X = rgba.x - neurons[i].x;
@@ -104,5 +104,7 @@ __kernel void som_draw(
 		}
 	}
 
-	write_imageui(output, imgCoords, (uint4)(neurons[neuron_idx].x, neurons[neuron_idx].y, neurons[neuron_idx].z, 255));
+	float3 res = { (float)neurons[neuron_idx].x / 255.f, (float)neurons[neuron_idx].y / 255.f, (float)neurons[neuron_idx].z / 255.f };
+
+	write_imagef(output, imgCoords, (float4)(res, 1.f));
 }

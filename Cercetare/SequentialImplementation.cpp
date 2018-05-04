@@ -14,17 +14,19 @@ SequentialImplementation::~SequentialImplementation()
 
 float SequentialImplementation::Grayscale(QImage & img)
 {
+	std::vector<uchar> values;
+	CopyImageToBuffer(img, values);
+	size_t sz = img.width() * img.height();
+
+	std::vector<uchar> values_out(sz * 4);
+
 	auto start = std::chrono::system_clock::now();
 
-	for (int i = 0; i < img.height(); ++i)
+	for (int i = 0; i < sz; i += 4)
 	{
-		for (int j = 0; j < img.width(); ++j)
-		{
-			QRgb px = img.pixel(j, i);
-			px = 0.21 * qRed(px) + 0.72 * qGreen(px) + 0.07 * qBlue(px);
-			px = qRgb(px, px, px);
-			img.setPixel(j, i, px);
-		}
+		values_out[i] = static_cast<uchar>(values[i] * 0.21);
+		values_out[i + 1] = static_cast<uchar>(values[i + 1] * 0.72);
+		values_out[i + 2] = static_cast<uchar>(values[i + 2] * 0.07);
 	}
 
 	auto end = std::chrono::system_clock::now();
@@ -47,6 +49,12 @@ float SequentialImplementation::GaussianBlur(QImage & img)
 
 	int HALF_FILTER_SIZE = 1;
 
+	std::vector<uchar> values;
+	CopyImageToBuffer(img, values);
+	size_t sz = img.width() * img.height();
+
+	std::vector<uchar> values_out(sz * 4);
+
 	auto start = std::chrono::system_clock::now();
 
 	for (int i = 0; i < img.height(); ++i)
@@ -54,7 +62,7 @@ float SequentialImplementation::GaussianBlur(QImage & img)
 		for (int j = 0; j < img.width(); ++j)
 		{
 			size_t filter_index = 0;
-			QRgb value = qRgb(0, 0, 0);
+			uchar R = 0, G = 0, B = 0;
 			for (int r = -HALF_FILTER_SIZE; r <= HALF_FILTER_SIZE; r++)
 			{
 				for (int c = -HALF_FILTER_SIZE; c <= HALF_FILTER_SIZE; c++)
@@ -64,15 +72,21 @@ float SequentialImplementation::GaussianBlur(QImage & img)
 						continue;
 					}
 
-					QRgb px = img.pixel(j + c, i + r);
-					px = qRgb(qRed(px) *gaussian_kernel[filter_index], qGreen(px) *gaussian_kernel[filter_index], qBlue(px) *gaussian_kernel[filter_index]);
-					value += px;
+					size_t index = ((i + r) * img.height() + j + c) * 4;
+
+					R += gaussian_kernel[filter_index] * values[index];
+					G += gaussian_kernel[filter_index] * values[index + 1];
+					B += gaussian_kernel[filter_index] * values[index + 2];
 
 					++filter_index;
 				}
 			}
 
-			img.setPixel(i, j, value);
+			size_t index = (i * img.height() + j) * 4;
+
+			values_out[index] = R;
+			values_out[index + 1] = G;
+			values_out[index + 2] = B;
 		}
 	}
 

@@ -155,6 +155,8 @@ void MainWindow::SetActions()
 	// Descriptors
 	connect(m_ui.actionSIFT, SIGNAL(triggered()), this, SLOT(OnSIFTClcked()));
 
+	// Help
+	connect(m_ui.actionBenchmark, SIGNAL(triggered()), this, SLOT(OnBenchmarkClicked()));
 }
 
 void MainWindow::ScaleImage(double factor)
@@ -330,4 +332,9 @@ void MainWindow::OnSIFTClcked()
 {
 	m_cl.RunSIFT(m_img);
 	labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
+}
+
+void MainWindow::OnBenchmarkClicked()
+{
+	Log(Benchmark::RunTests(m_cl, m_img));
 }

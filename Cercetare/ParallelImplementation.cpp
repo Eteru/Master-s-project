@@ -2,6 +2,7 @@
 
 #include <omp.h> // version 2.0
 #include <chrono>
+#include <iostream>
 
 
 ParallelImplementation::ParallelImplementation()
@@ -14,19 +15,19 @@ ParallelImplementation::~ParallelImplementation()
 
 float ParallelImplementation::Grayscale(QImage & img)
 {
-	auto start = std::chrono::system_clock::now();
+	std::vector<uchar> values;
+	CopyImageToBuffer(img, values);
+	size_t sz = img.width() * img.height();
 
-	int j;
-	#pragma omp parallel for private(j)
-	for (int i = 0; i < img.width(); ++i)
+	std::vector<uchar> values_out(sz * 4);
+	auto start = std::chrono::system_clock::now();
+	
+	#pragma omp parallel for shared(img) schedule(static)
+	for (int i = 0; i < sz; i+=4)
 	{
-		for (j = 0; j < img.height(); ++j)
-		{
-			QRgb px = img.pixel(i, j);
-			px = 0.21 * qRed(px) + 0.72 * qGreen(px) + 0.07 * qBlue(px);
-			px = qRgb(px, px, px);
-			img.setPixel(i, j, px);
-		}
+		values_out[i] = static_cast<uchar>(values[i] * 0.21);
+		values_out[i + 1] = static_cast<uchar>(values[i + 1] * 0.72);
+		values_out[i + 2] = static_cast<uchar>(values[i + 2] * 0.07);
 	}
 
 	auto end = std::chrono::system_clock::now();
@@ -49,40 +50,45 @@ float ParallelImplementation::GaussianBlur(QImage & img)
 
 	int HALF_FILTER_SIZE = 1;
 
+	std::vector<uchar> values;
+	CopyImageToBuffer(img, values);
+	size_t sz = img.width() * img.height();
+
+	std::vector<uchar> values_out(sz * 4);
+
 	auto start = std::chrono::system_clock::now();
 
-	#pragma omp parallel for
-	for (int i = 0; i < img.width(); ++i)
+	#pragma omp parallel for shared(img) schedule(static)
+	for (int i = 0; i < img.height(); ++i)
 	{
-		for (int j = 0; j < img.height(); ++j)
+		for (int j = 0; j < img.width(); ++j)
 		{
 			size_t filter_index = 0;
-			QRgb value = qRgb(0, 0, 0);
+			uchar R = 0, G = 0, B = 0;
 			for (int r = -HALF_FILTER_SIZE; r <= HALF_FILTER_SIZE; r++)
 			{
 				for (int c = -HALF_FILTER_SIZE; c <= HALF_FILTER_SIZE; c++)
 				{
-					if (i + r < 0 || i + r >= img.width() || j + c < 0 || j + c >= img.height())
+					if (i + r < 0 || i + r >= img.height() || j + c < 0 || j + c >= img.width())
 					{
 						continue;
 					}
 
-					QRgb px;
-					#pragma omp critical
-					{
-						 px = img.pixel(i + r, j + c);
-					}
-					px = qRgb(qRed(px) *gaussian_kernel[filter_index], qGreen(px) *gaussian_kernel[filter_index], qBlue(px) *gaussian_kernel[filter_index]);
-					value += px;
+					size_t index = ((i + r) * img.height() + j + c) * 4;
+
+					R += gaussian_kernel[filter_index] * values[index];
+					G += gaussian_kernel[filter_index] * values[index + 1];
+					B += gaussian_kernel[filter_index] * values[index + 2];
 
 					++filter_index;
 				}
 			}
 
-			#pragma omp critical
-			{
-				img.setPixel(i, j, value);
-			}
+			size_t index = (i * img.height() + j) * 4;
+
+			values_out[index] = R;
+			values_out[index + 1] = G;
+			values_out[index + 2] = B;
 		}
 	}
 
@@ -117,7 +123,7 @@ float ParallelImplementation::KMeans(QImage & img, const int centroid_count)
 
 	for (int iter = 0; iter < max_iterations; ++iter)
 	{
-		#pragma omp parallel for
+		#pragma omp parallel for shared(centroids) schedule(static)
 		for (int i = 0; i < values.size(); i += 4)
 		{
 			float dist = FLT_MAX;
@@ -145,7 +151,7 @@ float ParallelImplementation::KMeans(QImage & img, const int centroid_count)
 
 		// Update centroids
 		#pragma omp barrier
-		#pragma omp parallel for
+		#pragma omp parallel for shared(centroids) schedule(static)
 		for (int c = 0; c < centroids.size(); ++c)
 		{
 			if (0 != centroids[c].count)
@@ -165,7 +171,7 @@ float ParallelImplementation::KMeans(QImage & img, const int centroid_count)
 	}
 
 	// "Draw"
-	#pragma omp parallel for
+	#pragma omp parallel for shared(centroids) schedule(static)
 	for (int i = 0; i < values.size(); i += 4)
 	{
 		float dist = FLT_MAX;
@@ -244,7 +250,7 @@ float ParallelImplementation::SOMSegmentation(QImage & img, QImage * ground_trut
 			float neigh_dist = (neurons.size() - 1) * exp(-static_cast<double>(epoch) / time_constant);
 			float learning_rate = ct_learning_rate * exp(-static_cast<double>(epoch) / epochs);
 
-			#pragma omp parallel
+			#pragma omp parallel for shared(neurons) schedule(static)
 			for (int c = 0; c < neurons.size(); ++c)
 			{
 				int n_dist = abs((int)(bmu - c));
@@ -263,7 +269,7 @@ float ParallelImplementation::SOMSegmentation(QImage & img, QImage * ground_trut
 		}
 	}
 
-	#pragma omp parallel
+	#pragma omp parallel for shared(neurons) schedule(static)
 	for (int index = 0; index < values.size(); index += 4)
 	{
 		float dist = FLT_MAX;

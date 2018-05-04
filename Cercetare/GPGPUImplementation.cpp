@@ -80,7 +80,7 @@ void GPGPUImplementation::LoadData(QImage & img)
 
 	try
 	{
-		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8);
+		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNORM_INT8);
 
 		m_data_original = new cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
 		m_data_front = new cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
@@ -121,15 +121,14 @@ float GPGPUImplementation::Grayscale(QImage & img)
 		res = kernel.setArg(0, *m_data_original);
 		res = kernel.setArg(1, *m_data_front);
 
-		auto start = std::chrono::system_clock::now();
-		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_globalRange, cl::NullRange);
+		cl::Event event;
+		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_globalRange, cl::NullRange, nullptr, &event);
 
 		res = m_queue.enqueueReadImage(*m_data_front, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
 
 		m_queue.finish();
-		auto end = std::chrono::system_clock::now();
 
-		ret = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+		ret = event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 
 		CopyBufferToImage(m_values, img);
 	}
@@ -251,15 +250,14 @@ float GPGPUImplementation::GaussianBlur(QImage & img)
 
 		auto start = std::chrono::system_clock::now();
 
-		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_globalRange, cl::NullRange);
+		cl::Event event;
+		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_globalRange, cl::NullRange, nullptr, &event);
 
 		res = m_queue.enqueueReadImage(*m_data_front, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
 
 		m_queue.finish();
 
-		auto end = std::chrono::system_clock::now();
-
-		ret = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+		ret = event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 
 		CopyBufferToImage(m_values, img);
 
@@ -383,15 +381,22 @@ float GPGPUImplementation::KMeans(QImage & img, const int centroid_count)
 		res = kmeans_update_centroids.setArg(0, centroidsCL);
 		res = kmeans_update_centroids.setArg(1, centroid_count);
 
-		auto start = std::chrono::system_clock::now();
+		cl::Event event;
 
 		for (int i = 0; i < 5; ++i)
 		{
 			// Run the kmeans kernel
-			res = m_queue.enqueueNDRangeKernel(kmeans, cl::NullRange, m_globalRange, cl::NullRange);
+			res = m_queue.enqueueNDRangeKernel(kmeans, cl::NullRange, m_globalRange, cl::NullRange, nullptr, &event);
+			m_queue.finish();
+
+			ret += event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+
 
 			// Run the update centroid kernel
-			res = m_queue.enqueueNDRangeKernel(kmeans_update_centroids, cl::NullRange, cl::NDRange(centroid_count, 1), cl::NullRange);
+			res = m_queue.enqueueNDRangeKernel(kmeans_update_centroids, cl::NullRange, cl::NDRange(centroid_count, 1), cl::NullRange, nullptr, &event);
+			m_queue.finish();
+
+			ret += event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 		}
 
 		// Run a last iteration of K-Means that will also change de colors
@@ -400,15 +405,15 @@ float GPGPUImplementation::KMeans(QImage & img, const int centroid_count)
 		res = kmeans_draw.setArg(2, centroidsCL);
 		res = kmeans_draw.setArg(3, centroid_count);
 
-		res = m_queue.enqueueNDRangeKernel(kmeans_draw, cl::NullRange, m_globalRange, cl::NullRange);
+		res = m_queue.enqueueNDRangeKernel(kmeans_draw, cl::NullRange, m_globalRange, cl::NullRange, nullptr, &event);
+		m_queue.finish();
+
+		ret += event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+
 		
 		res = m_queue.enqueueReadImage(*m_data_front, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
 
 		m_queue.finish();
-
-		auto end = std::chrono::system_clock::now();
-
-		ret = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
 		CopyBufferToImage(m_values, img);
 	}
@@ -481,7 +486,7 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 		res = som_update_wieghts.setArg(2, neuronsCL);
 		res = som_update_wieghts.setArg(3, neuron_count);
 
-		auto start = std::chrono::system_clock::now();
+		cl::Event event;
 
 		for (int iter = 0; iter < iterations; ++iter)
 		{
@@ -500,7 +505,11 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 				// Set value argument
 				res = som_find_bmu.setArg(0, value);
 
-				res = m_queue.enqueueNDRangeKernel(som_find_bmu, cl::NullRange, cl::NDRange(neuron_count, 1), cl::NullRange);
+				res = m_queue.enqueueNDRangeKernel(som_find_bmu, cl::NullRange, cl::NDRange(neuron_count, 1), cl::NullRange, nullptr, &event);
+				m_queue.finish();
+
+				ret += event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+
 				//m_queue.finish();
 				//m_queue.enqueueReadBuffer(bmu_idxCL, CL_TRUE, 0, sizeof(int), &bmu_idx, 0, NULL);
 				//
@@ -514,7 +523,10 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 				res = som_update_wieghts.setArg(4, neigh_dist);
 				res = som_update_wieghts.setArg(5, learning_rate);
 
-				res = m_queue.enqueueNDRangeKernel(som_update_wieghts, cl::NullRange, cl::NDRange(neuron_count, 1), cl::NullRange);
+				res = m_queue.enqueueNDRangeKernel(som_update_wieghts, cl::NullRange, cl::NDRange(neuron_count, 1), cl::NullRange, nullptr, &event);
+				m_queue.finish();
+
+				ret += event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 			}
 
 			std::pair<float, float> qRes = CheckSegmentationNeurons(neuronsCL, neurons);
@@ -532,24 +544,22 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 		res = som_draw.setArg(1, *m_data_front);
 		res = som_draw.setArg(2, neuronsCL);
 		res = som_draw.setArg(3, neuron_count);
-		res = m_queue.enqueueNDRangeKernel(som_draw, cl::NullRange, m_globalRange, cl::NullRange);
-
-		res = noise_reduction.setArg(0, *m_data_front);
-		res = noise_reduction.setArg(1, *m_data_back);
-		res = noise_reduction.setArg(2, neuronsCL);
-		res = noise_reduction.setArg(3, neuron_count);
-		res = noise_reduction.setArg(4, noise_kern_size);
-		res = m_queue.enqueueNDRangeKernel(noise_reduction, cl::NullRange, m_globalRange, cl::NullRange);
-
-		
-		res = m_queue.enqueueReadImage(*m_data_back, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
+		res = m_queue.enqueueNDRangeKernel(som_draw, cl::NullRange, m_globalRange, cl::NullRange, nullptr, &event);
 		m_queue.finish();
 
-		auto end = std::chrono::system_clock::now();
+		ret += event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 
-		ret = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+		//res = noise_reduction.setArg(0, *m_data_front);
+		//res = noise_reduction.setArg(1, *m_data_back);
+		//res = noise_reduction.setArg(2, neuronsCL);
+		//res = noise_reduction.setArg(3, neuron_count);
+		//res = noise_reduction.setArg(4, noise_kern_size);
+		//res = m_queue.enqueueNDRangeKernel(noise_reduction, cl::NullRange, m_globalRange, cl::NullRange);
 
-
+		/// todo: change to m_data_back if nosie reduction is used
+		res = m_queue.enqueueReadImage(*m_data_front, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
+		m_queue.finish();
+		
 		CopyBufferToImage(m_values, img);
 	}
 	catch (const cl::Error & err)
@@ -594,21 +604,40 @@ void GPGPUImplementation::RunSIFT(QImage & img)
 	try
 	{
 		cl_int res;
-		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_GRAYSCALE);
+		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_FLOAT);
+
+		cl::Kernel kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_GRAYSCALE);
 		// Set arguments to kernel
+		cl::Image2D grayscaled = cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, img.width(), img.height());
+
 		res = kernel.setArg(0, *m_data_original);
-		res = kernel.setArg(1, *m_data_front);
+		res = kernel.setArg(1, grayscaled);
+
+		std::vector<float> valuesf(m_values.size());
 
 		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_globalRange, cl::NullRange);
 
 		m_queue.finish();
+		//res = m_queue.enqueueReadImage(grayscaled, CL_TRUE, m_origin, m_region, 0, 0, &valuesf.front());
+		//
+		//m_queue.finish();
+		//for (size_t i = 0; i < valuesf.size(); ++i)
+		//{
+		//	m_values[i] = valuesf[i] * 255;
+		//}
+		//
+		//CopyBufferToImage(m_values, img);
 
-		cl::Image2D * sift_output = m_sift.Run(m_data_front, m_width, m_height);
-
-		res = m_queue.enqueueReadImage(*sift_output, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
-
+		cl::Image2D * sift_output = m_sift.Run(&grayscaled, m_width, m_height);
+		
+		res = m_queue.enqueueReadImage(*sift_output, CL_TRUE, m_origin, m_region, 0, 0, &valuesf.front());
+		
 		m_queue.finish();
-
+		for (size_t i = 0; i < valuesf.size(); ++i)
+		{
+			m_values[i] = valuesf[i] * 255;
+		}
+		
 		CopyBufferToImage(m_values, img);
 	}
 	catch (const cl::Error & err)

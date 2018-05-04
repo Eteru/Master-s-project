@@ -46,13 +46,15 @@ bool CLManager::Init()
 		devices = m_contextCL.getInfo<CL_CONTEXT_DEVICES>();
 		PrintDevices(devices);
 		// Create a command queue and use the first device
-		m_queue = cl::CommandQueue(m_contextCL, devices[0]);
+		m_queue = cl::CommandQueue(m_contextCL, devices[0], CL_QUEUE_PROFILING_ENABLE);
 
 		cl::Program program;
 		LoadProgram(program, devices, "Kernels/utils.cl");
 		m_kernels[Constants::KERNEL_GRAYSCALE] = cl::Kernel(program, Constants::KERNEL_GRAYSCALE.c_str());
 		m_kernels[Constants::KERNEL_RESIZE] = cl::Kernel(program, Constants::KERNEL_RESIZE.c_str());
 		m_kernels[Constants::KERNEL_IMAGE_DIFFERENCE] = cl::Kernel(program, Constants::KERNEL_IMAGE_DIFFERENCE.c_str());
+		m_kernels[Constants::KERNEL_FIND_EXTREME_POINTS] = cl::Kernel(program, Constants::KERNEL_FIND_EXTREME_POINTS.c_str());
+		m_kernels[Constants::KERNEL_INT_TO_FLOAT] = cl::Kernel(program, Constants::KERNEL_INT_TO_FLOAT.c_str());
 
 		LoadProgram(program, devices, "Kernels/filters.cl");
 		m_kernels[Constants::KERNEL_CONVOLUTE] = cl::Kernel(program, Constants::KERNEL_CONVOLUTE.c_str());
@@ -113,10 +115,12 @@ void CLManager::PrintDevices(const std::vector<cl::Device>& devices)
 		std::cout << " (GPU: " << CL_DEVICE_TYPE_GPU << ", CPU: " << CL_DEVICE_TYPE_CPU << ")" << std::endl;
 		std::cout << "\tDevice Vendor: " << d.getInfo<CL_DEVICE_VENDOR>() << std::endl;
 		std::cout << "\tDevice Max Compute Units: " << d.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() << std::endl;
-		std::cout << "\tDevice Global Memory: " << d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() << std::endl;
 		std::cout << "\tDevice Max Clock Frequency: " << d.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << std::endl;
 		std::cout << "\tDevice Max Allocateable Memory: " << d.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>() << std::endl;
+		std::cout << "\tDevice Global Memory: " << d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() << std::endl;
 		std::cout << "\tDevice Local Memory: " << d.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
+		std::cout << "\tDevice Constant Memory: " << d.getInfo<CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE>() << std::endl;
+
 		std::cout << "\tDevice Available: " << d.getInfo< CL_DEVICE_AVAILABLE>() << std::endl;
 	}
 	std::cout << std::endl;

@@ -15,6 +15,11 @@ public:
 
 private:
 	static const uint32_t NUMBER_OF_BLURS = 5;
-	static const uint32_t NUMBER_OF_OCTAVES = 5;
+	static const uint32_t NUMBER_OF_OCTAVES = 4;
+
+	cl::Image2D * SetupReferenceImage(cl::Image2D * image, uint32_t w, uint32_t h);
+	cl::Image2D * SetupReferenceImageOld(cl::Image2D * image, uint32_t w, uint32_t h);
+
+	void WriteOctaveImagesOnDisk(Octave & o, uint32_t o_idx) const;
 };
 

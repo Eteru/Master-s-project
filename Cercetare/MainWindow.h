@@ -42,6 +42,8 @@ private slots:
 
 	void OnSIFTClcked();
 
+	void OnBenchmarkClicked();
+
 private:
 	Ui::CercetareClass m_ui;
 	GPGPUImplementation m_cl;
