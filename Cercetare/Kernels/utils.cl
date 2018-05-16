@@ -70,7 +70,7 @@ __kernel void difference(
 
 	//printf("(%d, %d, %d) - (%d, %d, %d) = (%d, %d, %d)\n",
 	//	px1.x, px1.y, px1.z, px2.x, px2.y, px2.z, diff.x, diff.y, diff.z);
-
+	//printf("%f, %f, %f\n", diff.x, diff.y, diff.z);
 	write_imagef(output, pos, (float4)(diff, 1.f));
 }
 
@@ -107,14 +107,14 @@ __kernel void find_extreme_points(
 		}
 	}
 
-	if (fabs(pixel + 0.0491962) < 0.0001f)
-	{
-		printf("test: %f\n", read_imagef(prev_dog, srcSampler, (int2)(pos.x - 1, pos.y - 1)).x);
-		for (int i = 0; i < SURROUNDING_PIXELS; ++i)
-		{
-			printf("(%f vs. %f)", pixel, surrounding_values[i]);
-		}
-	}
+	//if (fabs(pixel + 0.0491962) < 0.0001f)
+	//{
+	//	printf("test: %f\n", read_imagef(prev_dog, srcSampler, (int2)(pos.x - 1, pos.y - 1)).x);
+	//	for (int i = 0; i < SURROUNDING_PIXELS; ++i)
+	//	{
+	//		printf("(%f vs. %f)", pixel, surrounding_values[i]);
+	//	}
+	//}
 
 	bool is_max = false;
 	bool is_min = false;
@@ -146,7 +146,7 @@ __kernel void find_extreme_points(
 		pixel >= surrounding_values[24] &&
 		pixel >= surrounding_values[25])
 	{
-		printf("max\n");
+		//printf("max\n");
 		is_max = true;
 	}
 	else if (pixel <= surrounding_values[0]  &&
@@ -176,7 +176,7 @@ __kernel void find_extreme_points(
 			 pixel <= surrounding_values[24] &&
 			 pixel <= surrounding_values[25])
 	{
-		printf("min\n");
+		//printf("min\n");
 		is_min = true;
 	}
 

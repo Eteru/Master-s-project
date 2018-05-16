@@ -82,7 +82,7 @@ void GPGPUImplementation::LoadData(QImage & img)
 	{
 		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNORM_INT8);
 
-		m_data_original = new cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
+		m_data_original = new cl::Image2D(m_contextCL, CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
 		m_data_front = new cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
 		m_data_back = new cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
 
@@ -465,14 +465,14 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 		cl::Kernel & som_draw = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_SOM_DRAW);
 		cl::Kernel & noise_reduction = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_POST_NOISE_REDUCTION);
 
-		cl::Buffer neuronsCL = cl::Buffer(m_contextCL, CL_MEM_READ_ONLY, neurons.size() * sizeof(Neuron), 0, 0);
+		cl::Buffer neuronsCL = cl::Buffer(m_contextCL, CL_MEM_READ_WRITE, neurons.size() * sizeof(Neuron), 0, 0);
 		m_queue.enqueueWriteBuffer(neuronsCL, CL_TRUE, 0, neurons.size() * sizeof(Neuron), &neurons[0], 0, NULL);
 
-		cl::Buffer distancesCL = cl::Buffer(m_contextCL, CL_MEM_READ_ONLY, distances.size() * sizeof(float), 0, 0);
+		cl::Buffer distancesCL = cl::Buffer(m_contextCL, CL_MEM_READ_WRITE, distances.size() * sizeof(float), 0, 0);
 		m_queue.enqueueWriteBuffer(distancesCL, CL_TRUE, 0, distances.size() * sizeof(float), &distances[0], 0, NULL);
 
 		int bmu_idx = 0;
-		cl::Buffer bmu_idxCL = cl::Buffer(m_contextCL, CL_MEM_READ_ONLY, sizeof(int), 0, 0);
+		cl::Buffer bmu_idxCL = cl::Buffer(m_contextCL, CL_MEM_READ_WRITE, sizeof(int), 0, 0);
 		m_queue.enqueueWriteBuffer(bmu_idxCL, CL_TRUE, 0, sizeof(int), &bmu_idx, 0, NULL);
 
 		// Set arguments that dont change on host
@@ -497,9 +497,9 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 
 				cl_uint3 value =
 				{
-					static_cast<cl_uint>(m_values_orig[index]),
-					static_cast<cl_uint>(m_values_orig[index + 1]),
-					static_cast<cl_uint>(m_values_orig[index + 2])
+					static_cast<cl_float>(m_values_orig[index] / 255.f),
+					static_cast<cl_float>(m_values_orig[index + 1] / 255.f),
+					static_cast<cl_float>(m_values_orig[index + 2] / 255.f)
 				};
 
 				// Set value argument

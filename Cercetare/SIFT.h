@@ -21,5 +21,6 @@ private:
 	cl::Image2D * SetupReferenceImageOld(cl::Image2D * image, uint32_t w, uint32_t h);
 
 	void WriteOctaveImagesOnDisk(Octave & o, uint32_t o_idx) const;
+	void WriteImageOnDisk(cl::Image2D *img, uint32_t w, uint32_t h, std::string name) const;
 };
 

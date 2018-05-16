@@ -117,7 +117,7 @@ float ParallelImplementation::KMeans(QImage & img, const int centroid_count)
 
 	GenerateCentroids(centroid_count, centroids);
 
-	int max_iterations = 1;
+	int max_iterations = 5;
 	
 	auto start = std::chrono::system_clock::now();
 

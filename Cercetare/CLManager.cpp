@@ -141,7 +141,7 @@ void CLManager::LoadProgram(cl::Program & program, std::vector<cl::Device> & dev
 		program = cl::Program(m_contextCL, source);
 		// Build program for these specific devices
 
-		program.build(devices);
+		program.build(devices, "-cl-std=CL2.0");
 	}
 	catch (const cl::Error & err)
 	{

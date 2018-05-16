@@ -48,7 +48,7 @@ std::string Benchmark::RunTests(GPGPUImplementation & gpgpu, QImage & img)
 	for (int i = 0; i < images.size(); ++i)
 	{
 		QImage crt_img;
-		bool b = crt_img.load(QString::fromStdString("D:\\workspace\\git\\Master\-s\-project\\dataset\\" + images[i]));
+		bool b = crt_img.load(QString::fromStdString("D:\\workspace\\git\\Master-s\-project\\dataset\\" + images[i]));
 
 		gpgpu.SetData(crt_img);
 

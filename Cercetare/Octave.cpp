@@ -4,17 +4,23 @@
 
 #include <iostream>
 
+#define M_PI 3.14159265359
+float Octave::SIGMA_INCREMENT = sqrtf(2.f);
+
 Octave::Octave()
 {
 	std::cerr << "You should be not calling this\n";
 }
 
-Octave::Octave(cl::Image2D * image, uint32_t w, uint32_t h, uint32_t size)
-	: m_width(w), m_height(h)
+Octave::Octave(cl::Image2D * image, float sigma, uint32_t w, uint32_t h, uint32_t size)
+	: m_width(w), m_height(h), m_starting_sigma(sigma)
 {
 	m_context = *CLManager::GetInstance()->GetContext();
 	m_queue = *CLManager::GetInstance()->GetQueue();
 	m_range = cl::NDRange(w, h);
+
+	m_default_image = image;
+	
 
 	cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_FLOAT);
 
@@ -55,6 +61,8 @@ Octave::Octave(Octave & octave, uint32_t w, uint32_t h)
 	m_context = *CLManager::GetInstance()->GetContext();
 	m_queue = *CLManager::GetInstance()->GetQueue();
 	m_range = cl::NDRange(w, h);
+	m_starting_sigma = octave.GetMiddleSigma();
+	m_default_image = nullptr;
 
 	cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_FLOAT);
 
@@ -66,6 +74,8 @@ Octave::Octave(Octave & octave, uint32_t w, uint32_t h)
 		m_images.resize(size);
 		m_DoGs.resize(size - 1);
 		m_points.resize(size - 3);
+
+		m_default_image = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, w, h);
 
 		for (uint32_t i = 0; i < m_images.size(); ++i)
 		{
@@ -85,8 +95,8 @@ Octave::Octave(Octave & octave, uint32_t w, uint32_t h)
 		// Set first image
 		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_RESIZE);
 
-		res = kernel.setArg(0, *octave.GetLastImage());
-		res = kernel.setArg(1, *m_images[0]);
+		res = kernel.setArg(0, *octave.GetDefaultImage());
+		res = kernel.setArg(1, *m_default_image);
 		res = kernel.setArg(2, w);
 		res = kernel.setArg(3, h);
 
@@ -95,7 +105,6 @@ Octave::Octave(Octave & octave, uint32_t w, uint32_t h)
 		m_queue.finish();
 
 		Blur();
-
 	}
 	catch (const cl::Error & err)
 	{
@@ -114,11 +123,28 @@ Octave::~Octave()
 	//		m_images[i] = nullptr;
 	//	}
 	//}
+
+	// TODO: no fucking idea whats going on
+	//if (nullptr != m_default_image)
+	//{
+	//	delete m_default_image;
+	//	m_default_image = nullptr;
+	//}
 }
 
 size_t Octave::GetScaleSpaceSize()
 {
 	return m_images.size();
+}
+
+float Octave::GetMiddleSigma() const
+{
+	return m_starting_sigma * std::pow(SIGMA_INCREMENT, m_images.size() / 2);
+}
+
+cl::Image2D * Octave::GetDefaultImage()
+{
+	return m_default_image;
 }
 
 cl::Image2D * Octave::GetImage(uint32_t idx)
@@ -159,90 +185,27 @@ uint32_t Octave::GetHeight() const
 
 void Octave::Blur()
 {
-	// sigma = 1.6, k = sqrt 2
-	//std::vector<std::vector<float>> gaussian_kernels =
-	//{
-	//	{ // sigma = 1.6
-	//		7.f,
-	//		0.002121f, 0.005461f, 0.009629f, 0.011633f, 0.009629f, 0.005461f, 0.002121f,
-	//		0.005461f, 0.014059f, 0.024791f, 0.029949f, 0.024791f, 0.014059f, 0.005461f,
-	//		0.009629f, 0.024791f, 0.043715f, 0.052812f, 0.043715f, 0.024791f, 0.009629f,
-	//		0.011633f, 0.029949f, 0.052812f, 0.063802f, 0.052812f, 0.029949f, 0.011633f,
-	//		0.009629f, 0.024791f, 0.043715f, 0.052812f, 0.043715f, 0.024791f, 0.009629f,
-	//		0.005461f, 0.014059f, 0.024791f, 0.029949f, 0.024791f, 0.014059f, 0.005461f,
-	//		0.002121f, 0.005461f, 0.009629f, 0.011633f, 0.009629f, 0.005461f, 0.002121f
-	//
-	//	},
-	//	{ // sigma = 1.6 * sqrt 2
-	//		7.f,
-	//		0.007036f, 0.011376f, 0.015176f, 0.016706f, 0.015176f, 0.011376f, 0.007036f,
-	//		0.011376f, 0.018391f, 0.024536f, 0.027010f, 0.024536f, 0.018391f, 0.011376f,
-	//		0.015176f, 0.024536f, 0.032732f, 0.036033f, 0.032732f, 0.024536f, 0.015176f,
-	//		0.016706f, 0.027010f, 0.036033f, 0.039667f, 0.036033f, 0.027010f, 0.016706f,
-	//		0.015176f, 0.024536f, 0.032732f, 0.036033f, 0.032732f, 0.024536f, 0.015176f,
-	//		0.011376f, 0.018391f, 0.024536f, 0.027010f, 0.024536f, 0.018391f, 0.011376f,
-	//		0.007036f, 0.011376f, 0.015176f, 0.016706f, 0.015176f, 0.011376f, 0.007036f
-	//	},
-	//	{ // sigma = 1.6 * sqrt 2 * sqrt 2
-	//		7.f,
-	//		0.012235f, 0.015587f, 0.018024f, 0.018919f, 0.018024f, 0.015587f, 0.012235f,
-	//		0.015587f, 0.019858f, 0.022963f, 0.024102f, 0.022963f, 0.019858f, 0.015587f,
-	//		0.018024f, 0.022963f, 0.026554f, 0.027872f, 0.026554f, 0.022963f, 0.018024f,
-	//		0.018919f, 0.024102f, 0.027872f, 0.029255f, 0.027872f, 0.024102f, 0.018919f,
-	//		0.018024f, 0.022963f, 0.026554f, 0.027872f, 0.026554f, 0.022963f, 0.018024f,
-	//		0.015587f, 0.019858f, 0.022963f, 0.024102f, 0.022963f, 0.019858f, 0.015587f,
-	//		0.012235f, 0.015587f, 0.018024f, 0.018919f, 0.018024f, 0.015587f, 0.012235f
-	//	},
-	//	{ // sigma = 1.6 * sqrt 2 * sqrt 2 * sqrt 2
-	//		7.f,
-	//		0.015892f, 0.017946f, 0.019304f, 0.019779f, 0.019304f, 0.017946f, 0.015892f,
-	//		0.017946f, 0.020266f, 0.021799f, 0.022336f, 0.021799f, 0.020266f, 0.017946f,
-	//		0.019304f, 0.021799f, 0.023449f, 0.024026f, 0.023449f, 0.021799f, 0.019304f,
-	//		0.019779f, 0.022336f, 0.024026f, 0.024617f, 0.024026f, 0.022336f, 0.019779f,
-	//		0.019304f, 0.021799f, 0.023449f, 0.024026f, 0.023449f, 0.021799f, 0.019304f,
-	//		0.017946f, 0.020266f, 0.021799f, 0.022336f, 0.021799f, 0.020266f, 0.017946f,
-	//		0.015892f, 0.017946f, 0.019304f, 0.019779f, 0.019304f, 0.017946f, 0.015892f
-	//	},
-	//	{ // sigma = 1.6 * sqrt 2 * sqrt 2 * sqrt 2 * sqrt 2
-	//		7.f,
-	//		0.018035f, 0.019168f, 0.019882f, 0.020125f, 0.019882f, 0.019168f, 0.018035f,
-	//		0.019168f, 0.020372f, 0.021130f, 0.021389f, 0.021130f, 0.020372f, 0.019168f,
-	//		0.019882f, 0.021130f, 0.021917f, 0.022186f, 0.021917f, 0.021130f, 0.019882f,
-	//		0.020125f, 0.021389f, 0.022186f, 0.022457f, 0.022186f, 0.021389f, 0.020125f,
-	//		0.019882f, 0.021130f, 0.021917f, 0.022186f, 0.021917f, 0.021130f, 0.019882f,
-	//		0.019168f, 0.020372f, 0.021130f, 0.021389f, 0.021130f, 0.020372f, 0.019168f,
-	//		0.018035f, 0.019168f, 0.019882f, 0.020125f, 0.019882f, 0.019168f, 0.018035f
-	//	}
-	//};
-
-	std::vector<float> gaussian = { // sigma = sqrt 2
-		7.f,
-		0.001044f, 0.003468f, 0.007121f, 0.009050f, 0.007121f, 0.003468f, 0.001044f,
-		0.003468f, 0.011514f, 0.023644f, 0.030051f, 0.023644f, 0.011514f, 0.003468f,
-		0.007121f, 0.023644f, 0.048555f, 0.061712f, 0.048555f, 0.023644f, 0.007121f,
-		0.009050f, 0.030051f, 0.061712f, 0.078433f, 0.061712f, 0.030051f, 0.009050f,
-		0.007121f, 0.023644f, 0.048555f, 0.061712f, 0.048555f, 0.023644f, 0.007121f,
-		0.003468f, 0.011514f, 0.023644f, 0.030051f, 0.023644f, 0.011514f, 0.003468f,
-		0.001044f, 0.003468f, 0.007121f, 0.009050f, 0.007121f, 0.003468f, 0.001044f
-	};
-
 	try
 	{
 		cl_int res;
 		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
-		cl::Buffer convCL = cl::Buffer(m_context, CL_MEM_READ_ONLY, gaussian.size() * sizeof(float), 0, 0);
-		m_queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, gaussian.size() * sizeof(float), &gaussian[0], 0, NULL);
+		cl::Buffer convCL = cl::Buffer(m_context, CL_MEM_READ_ONLY, (1 + BLUR_KERNEL_SIZE * BLUR_KERNEL_SIZE) * sizeof(float), 0, 0);
 
-		for (size_t i = 1; i < m_images.size(); ++i)
+		float sigma = m_starting_sigma;
+		for (size_t i = 0; i < m_images.size(); ++i)
 		{
+			std::vector<float> gaussian = GaussianKernel(BLUR_KERNEL_SIZE, sigma);
+			m_queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, gaussian.size() * sizeof(float), &gaussian[0], 0, NULL);
 
 			// Set arguments to kernel
-			res = kernel.setArg(0, *m_images[i - 1]);
+			res = kernel.setArg(0, *m_default_image);
 			res = kernel.setArg(1, *m_images[i]);
 			res = kernel.setArg(2, convCL);
 
 			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange);
 			m_queue.finish();
+
+			sigma *= SIGMA_INCREMENT;
 		}
 
 	}
@@ -306,4 +269,44 @@ void Octave::ComputeLocalMaxima()
 	{
 		std::cerr << "Octave::ComputeLocalMaxima: " << err.what() << " with error: " << err.err() << std::endl;
 	}
+}
+
+float Octave::Gaussian(const int x, const int y, const float sigma)
+{
+	float r = sqrtf(x*x + y*y);
+	float s = 2.f * sigma * sigma;
+
+	return expf(-(r*r) / s) / (M_PI * s);
+}
+
+std::vector<float> Octave::GaussianKernel(const uint32_t kernel_size, const float sigma)
+{
+	std::vector<float> kernel(kernel_size * kernel_size + 1);
+	kernel[0] = kernel_size;
+
+	size_t idx = 1;
+	float sum = 0;
+	int half_kernel_size = kernel_size * 0.5;
+	// compute values
+	for (int row = -half_kernel_size; row <= half_kernel_size; ++row)
+	{
+		for (int col = -half_kernel_size; col <= half_kernel_size; ++col)
+		{
+			double x = Gaussian(row, col, sigma);
+			kernel[idx++] = x;
+			sum += x;
+		}
+	}
+
+	// normalize
+	idx = 1;
+	for (int row = 0; row < kernel_size; row++)
+	{
+		for (int col = 0; col < kernel_size; col++)
+		{
+			kernel[idx++] /= sum;
+		}
+	}
+
+	return kernel;
 }

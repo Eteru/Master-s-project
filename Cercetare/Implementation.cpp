@@ -53,9 +53,9 @@ void Implementation::GenerateCentroids(const uint32_t count, std::vector<Centroi
 	{
 		centroid = {};
 
-		centroid.x = std::rand() % 256;
-		centroid.y = std::rand() % 256;
-		centroid.z = std::rand() % 256;
+		centroid.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		centroid.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		centroid.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
 		centroid.sum_x = 0;
 		centroid.sum_y = 0;
@@ -74,9 +74,9 @@ void Implementation::GenerateNeurons(const uint32_t count, std::vector<Neuron>& 
 	{
 		neuron = {};
 
-		neuron.x = std::rand() % 256;
-		neuron.y = std::rand() % 256;
-		neuron.z = std::rand() % 256;
+		neuron.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		neuron.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		neuron.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
 		std::cout << " (" << neuron.x << ", " << neuron.y << ", " << neuron.z << ")";
 	}

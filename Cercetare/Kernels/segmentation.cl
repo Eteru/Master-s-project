@@ -15,7 +15,7 @@ __kernel void kmeans(
 	int centroid_idx = -1;
 	const int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
 
-	uint4 rgba = read_imageui(input, srcSampler, imgCoords);
+	float4 rgba = read_imagef(input, srcSampler, imgCoords);
 
 
 	for (int i = 0; i < centroids_no; ++i) 
@@ -32,10 +32,35 @@ __kernel void kmeans(
 		}
 	}
 
-	atomic_add(&centroids[centroid_idx].sum_x, rgba.x);
-	atomic_add(&centroids[centroid_idx].sum_y, rgba.y);
-	atomic_add(&centroids[centroid_idx].sum_z, rgba.z);
-	atomic_inc(&centroids[centroid_idx].count);
+	// TEST -------------
+	//uint lid = get_local_id(0);
+	//uint binId = get_group_id(0);
+	//
+	//uint group_offset = binId * bin_size;
+	//uint maxval = 0;
+	//
+	//int prefix_sum_val = work_group_scan_inclusive_add(rgba.x);
+	//barrier(CLK_GLOBAL_MEM_FENCE);
+	//
+	//int prefix_sum_val = work_group_scan_inclusive_add(rgba.y);
+	//barrier(CLK_GLOBAL_MEM_FENCE);
+	//
+	//int prefix_sum_val = work_group_scan_inclusive_add(rgba.z);
+	//barrier(CLK_GLOBAL_MEM_FENCE);
+	//
+	//// todo: sum of all workgroups
+	//
+	//
+	//// ------------------
+	//
+	//centroids[centroid_idx].sum_x += rgba.x;
+	//centroids[centroid_idx].sum_y += rgba.y;
+	//centroids[centroid_idx].sum_z += rgba.z;
+	//centroids[centroid_idx].count++;
+	//atomic_add(&centroids[centroid_idx].sum_x, rgba.x);
+	//atomic_add(&centroids[centroid_idx].sum_y, rgba.y);
+	//atomic_add(&centroids[centroid_idx].sum_z, rgba.z);
+	//atomic_inc(&centroids[centroid_idx].count);
 }
 
 __kernel void kmeans_draw(
@@ -49,7 +74,7 @@ __kernel void kmeans_draw(
 	int centroid_idx = -1;
 	const int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
 
-	uint4 rgba = read_imageui(input, srcSampler, imgCoords);
+	float4 rgba = read_imagef(input, srcSampler, imgCoords);
 
 
 	for (int i = 0; i < centroids_no; ++i) 
@@ -65,7 +90,7 @@ __kernel void kmeans_draw(
 		}
 	}
 
-	write_imageui(output, imgCoords, (uint4)(centroids[centroid_idx].x, centroids[centroid_idx].y, centroids[centroid_idx].z, 1));
+	write_imagef(output, imgCoords, (float4)(centroids[centroid_idx].x, centroids[centroid_idx].y, centroids[centroid_idx].z, 1));
 }
 
 __kernel void update_centroids(
