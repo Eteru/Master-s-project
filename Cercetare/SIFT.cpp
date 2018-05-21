@@ -43,6 +43,7 @@ cl::Image2D * SIFT::Run(cl::Image2D * image, uint32_t w, uint32_t h)
 	{
 		m_octaves[i].DoG();
 		m_octaves[i].ComputeLocalMaxima();
+		m_octaves[i].ComputeOrientation();
 		WriteOctaveImagesOnDisk(m_octaves[i], i);
 	}
 
@@ -54,17 +55,17 @@ cl::Image2D *  SIFT::SetupReferenceImage(cl::Image2D * image, uint32_t w, uint32
 	cl::Image2D *output = nullptr;
 	cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_FLOAT);
 
-	//std::vector<float> gaussian = { // sigma = 1.6
-	//	7.f,
-	//	0.002121f, 0.005461f, 0.009629f, 0.011633f, 0.009629f, 0.005461f, 0.002121f,
-	//	0.005461f, 0.014059f, 0.024791f, 0.029949f, 0.024791f, 0.014059f, 0.005461f,
-	//	0.009629f, 0.024791f, 0.043715f, 0.052812f, 0.043715f, 0.024791f, 0.009629f,
-	//	0.011633f, 0.029949f, 0.052812f, 0.063802f, 0.052812f, 0.029949f, 0.011633f,
-	//	0.009629f, 0.024791f, 0.043715f, 0.052812f, 0.043715f, 0.024791f, 0.009629f,
-	//	0.005461f, 0.014059f, 0.024791f, 0.029949f, 0.024791f, 0.014059f, 0.005461f,
-	//	0.002121f, 0.005461f, 0.009629f, 0.011633f, 0.009629f, 0.005461f, 0.002121f
-	//
-	//};
+	std::vector<float> gaussian = { // sigma = 1.6
+		7.f,
+		0.002121f, 0.005461f, 0.009629f, 0.011633f, 0.009629f, 0.005461f, 0.002121f,
+		0.005461f, 0.014059f, 0.024791f, 0.029949f, 0.024791f, 0.014059f, 0.005461f,
+		0.009629f, 0.024791f, 0.043715f, 0.052812f, 0.043715f, 0.024791f, 0.009629f,
+		0.011633f, 0.029949f, 0.052812f, 0.063802f, 0.052812f, 0.029949f, 0.011633f,
+		0.009629f, 0.024791f, 0.043715f, 0.052812f, 0.043715f, 0.024791f, 0.009629f,
+		0.005461f, 0.014059f, 0.024791f, 0.029949f, 0.024791f, 0.014059f, 0.005461f,
+		0.002121f, 0.005461f, 0.009629f, 0.011633f, 0.009629f, 0.005461f, 0.002121f
+	
+	};
 
 	try
 	{
@@ -73,11 +74,26 @@ cl::Image2D *  SIFT::SetupReferenceImage(cl::Image2D * image, uint32_t w, uint32
 		cl::Context context = *CLManager::GetInstance()->GetContext();
 		cl::CommandQueue queue = *CLManager::GetInstance()->GetQueue();
 
+		// Initial blur with sigma = 1.6
+		cl::Kernel kernel_blur = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
+		cl::Buffer convCL = cl::Buffer(context, CL_MEM_READ_ONLY, gaussian.size() * sizeof(float), 0, 0);
+		cl::Image2D resized_img = cl::Image2D(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, w, h);
+
+		queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, gaussian.size() * sizeof(float), &gaussian[0], 0, NULL);
+
+		// Set arguments to kernel
+		res = kernel_blur.setArg(0, *image);
+		res = kernel_blur.setArg(1, resized_img);
+		res = kernel_blur.setArg(2, convCL);
+
+		res = queue.enqueueNDRangeKernel(kernel_blur, cl::NullRange, cl::NDRange(w, h), cl::NullRange);
+		queue.finish();
+
 		// Resize to double its size		
 		output = new cl::Image2D(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, 2 * w, 2 * h);
 		cl::Kernel kernel_resize = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_RESIZE);
 
-		res = kernel_resize.setArg(0, *image);
+		res = kernel_resize.setArg(0, resized_img);
 		res = kernel_resize.setArg(1, *output);
 		res = kernel_resize.setArg(2, w * 2);
 		res = kernel_resize.setArg(3, h * 2);
@@ -85,22 +101,6 @@ cl::Image2D *  SIFT::SetupReferenceImage(cl::Image2D * image, uint32_t w, uint32
 		res = queue.enqueueNDRangeKernel(kernel_resize, cl::NullRange, cl::NDRange(2 * w, 2 * h), cl::NullRange);
 
 		queue.finish();
-
-		//// Initial blur with sigma = 1.6
-		//output = new cl::Image2D(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, 2 * w, 2 * h);
-		//cl::Kernel kernel_blur = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
-		//cl::Buffer convCL = cl::Buffer(context, CL_MEM_READ_ONLY, gaussian.size() * sizeof(float), 0, 0);
-		//
-		//queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, gaussian.size() * sizeof(float), &gaussian[0], 0, NULL);
-		//
-		//// Set arguments to kernel
-		//res = kernel_blur.setArg(0, resized_img);
-		//res = kernel_blur.setArg(1, *output);
-		//res = kernel_blur.setArg(2, convCL);
-		//
-		//res = queue.enqueueNDRangeKernel(kernel_blur, cl::NullRange, cl::NDRange(2 * w, 2 * h), cl::NullRange);
-		//queue.finish();
-
 	}
 	catch (const cl::Error & err)
 	{
@@ -175,6 +175,8 @@ void SIFT::WriteOctaveImagesOnDisk(Octave & o, uint32_t o_idx) const
 	auto imgs = o.GetImages();
 	imgs.insert(imgs.end(), o.GetDoGs().begin(), o.GetDoGs().end());
 	imgs.insert(imgs.end(), o.GetFeatures().begin(), o.GetFeatures().end());
+	imgs.insert(imgs.end(), o.GetMagnitudes().begin(), o.GetMagnitudes().end());
+	imgs.insert(imgs.end(), o.GetOrientations().begin(), o.GetOrientations().end());
 
 	cl::Context context = *CLManager::GetInstance()->GetContext();
 	cl::CommandQueue queue = *CLManager::GetInstance()->GetQueue();

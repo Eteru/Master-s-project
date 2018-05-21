@@ -25,9 +25,12 @@ public:
 	std::vector<cl::Image2D *> & GetImages();
 	std::vector<cl::Image2D *> & GetDoGs();
 	std::vector<cl::Image2D *> & GetFeatures();
+	std::vector<cl::Image2D *> & GetMagnitudes();
+	std::vector<cl::Image2D *> & GetOrientations();
 
 	void DoG();
 	void ComputeLocalMaxima();
+	void ComputeOrientation();
 
 private:
 	static const uint32_t BLUR_KERNEL_SIZE = 7;
@@ -43,9 +46,13 @@ private:
 	std::vector<cl::Image2D *> m_images;
 	std::vector<cl::Image2D *> m_DoGs;
 	std::vector<cl::Image2D *> m_points;
+	std::vector<cl::Image2D *> m_magnitudes;
+	std::vector<cl::Image2D *> m_orientations;
 
 	void Blur();
 	float Gaussian(const int x, const int y, const float sigma);
 	std::vector<float> Octave::GaussianKernel(const uint32_t kernel_size, const float sigma);
+
+	unsigned int GetKernelSize(float sigma, float cut_off = 0.001f);
 };
 

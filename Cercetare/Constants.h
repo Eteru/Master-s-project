@@ -26,4 +26,6 @@ namespace Constants
 	const std::string KERNEL_IMAGE_DIFFERENCE = "difference";
 	const std::string KERNEL_FIND_EXTREME_POINTS = "find_extreme_points";
 	const std::string KERNEL_INT_TO_FLOAT = "int_to_float";
+	const std::string KERNEL_MAGN_AND_ORIEN = "compute_magnitude_and_orientation";
+	const std::string KERNEL_GENERATE_FEATURE_POINTS = "generate_feature_points";
 }

@@ -55,6 +55,8 @@ bool CLManager::Init()
 		m_kernels[Constants::KERNEL_IMAGE_DIFFERENCE] = cl::Kernel(program, Constants::KERNEL_IMAGE_DIFFERENCE.c_str());
 		m_kernels[Constants::KERNEL_FIND_EXTREME_POINTS] = cl::Kernel(program, Constants::KERNEL_FIND_EXTREME_POINTS.c_str());
 		m_kernels[Constants::KERNEL_INT_TO_FLOAT] = cl::Kernel(program, Constants::KERNEL_INT_TO_FLOAT.c_str());
+		m_kernels[Constants::KERNEL_MAGN_AND_ORIEN] = cl::Kernel(program, Constants::KERNEL_MAGN_AND_ORIEN.c_str());
+		m_kernels[Constants::KERNEL_GENERATE_FEATURE_POINTS] = cl::Kernel(program, Constants::KERNEL_GENERATE_FEATURE_POINTS.c_str());
 
 		LoadProgram(program, devices, "Kernels/filters.cl");
 		m_kernels[Constants::KERNEL_CONVOLUTE] = cl::Kernel(program, Constants::KERNEL_CONVOLUTE.c_str());

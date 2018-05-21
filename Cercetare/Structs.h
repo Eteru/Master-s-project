@@ -17,3 +17,12 @@ struct Neuron
 	float y;
 	float z;
 };
+
+struct KeyPoint
+{
+	float x;
+	float y;
+	float magnitude;
+	float orientation;
+	unsigned scale;
+};

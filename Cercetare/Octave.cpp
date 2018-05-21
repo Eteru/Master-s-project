@@ -1,6 +1,7 @@
 
 #include "Octave.h"
 #include "CLManager.h"
+#include "Structs.h"
 
 #include <iostream>
 
@@ -27,6 +28,8 @@ Octave::Octave(cl::Image2D * image, float sigma, uint32_t w, uint32_t h, uint32_
 	m_images.resize(size);
 	m_DoGs.resize(size - 1);
 	m_points.resize(size - 3);
+	m_magnitudes.resize(size - 3);
+	m_orientations.resize(size - 3);
 
 	m_images[0] = image;
 
@@ -45,6 +48,16 @@ Octave::Octave(cl::Image2D * image, float sigma, uint32_t w, uint32_t h, uint32_
 		for (uint32_t i = 0; i < m_points.size(); ++i)
 		{
 			m_points[i] = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, w, h);
+		}
+
+		for (uint32_t i = 0; i < m_magnitudes.size(); ++i)
+		{
+			m_magnitudes[i] = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, w, h);
+		}
+
+		for (uint32_t i = 0; i < m_orientations.size(); ++i)
+		{
+			m_orientations[i] = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, w, h);
 		}
 	}
 	catch (const cl::Error & err)
@@ -74,6 +87,8 @@ Octave::Octave(Octave & octave, uint32_t w, uint32_t h)
 		m_images.resize(size);
 		m_DoGs.resize(size - 1);
 		m_points.resize(size - 3);
+		m_magnitudes.resize(size - 3);
+		m_orientations.resize(size - 3);
 
 		m_default_image = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, w, h);
 
@@ -90,6 +105,16 @@ Octave::Octave(Octave & octave, uint32_t w, uint32_t h)
 		for (uint32_t i = 0; i < m_points.size(); ++i)
 		{
 			m_points[i] = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, w, h);
+		}
+
+		for (uint32_t i = 0; i < m_magnitudes.size(); ++i)
+		{
+			m_magnitudes[i] = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, w, h);
+		}
+
+		for (uint32_t i = 0; i < m_orientations.size(); ++i)
+		{
+			m_orientations[i] = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, w, h);
 		}
 
 		// Set first image
@@ -173,6 +198,16 @@ std::vector<cl::Image2D*>& Octave::GetFeatures()
 	return m_points;
 }
 
+std::vector<cl::Image2D*>& Octave::GetMagnitudes()
+{
+	return m_magnitudes;
+}
+
+std::vector<cl::Image2D*>& Octave::GetOrientations()
+{
+	return m_orientations;
+}
+
 uint32_t Octave::GetWidth() const
 {
 	return m_width;
@@ -197,8 +232,9 @@ void Octave::Blur()
 			std::vector<float> gaussian = GaussianKernel(BLUR_KERNEL_SIZE, sigma);
 			m_queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, gaussian.size() * sizeof(float), &gaussian[0], 0, NULL);
 
+			// TODO: check just with default when done.
 			// Set arguments to kernel
-			res = kernel.setArg(0, *m_default_image);
+			res = kernel.setArg(0, i == 0 ? *m_default_image : *m_images[i-1]);
 			res = kernel.setArg(1, *m_images[i]);
 			res = kernel.setArg(2, convCL);
 
@@ -271,6 +307,81 @@ void Octave::ComputeLocalMaxima()
 	}
 }
 
+void Octave::ComputeOrientation()
+{
+	try
+	{
+		unsigned kps_size = m_width * m_height;
+
+		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8);
+
+		cl_int res;
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_MAGN_AND_ORIEN);
+		cl::Kernel & kernel_blur = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
+		cl::Kernel & kernel_gen_feature_points = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_GENERATE_FEATURE_POINTS);
+		cl::Buffer convCL = cl::Buffer(m_context, CL_MEM_READ_ONLY, (1 + BLUR_KERNEL_SIZE * BLUR_KERNEL_SIZE) * sizeof(float), 0, 0);
+		cl::Buffer keypointsCL = cl::Buffer(m_context, CL_MEM_READ_WRITE, kps_size * sizeof(KeyPoint), 0, 0);
+		cl::Buffer countCL = cl::Buffer(m_context, CL_MEM_READ_ONLY, sizeof(unsigned), 0, 0);
+
+
+		uint32_t crt_feature_i = 0;
+		for (size_t i = 1; i < m_DoGs.size() - 1; ++i)
+		{
+			// kps
+			unsigned start_count = 0;
+			std::vector<KeyPoint> keypoints(kps_size);
+			m_queue.enqueueWriteBuffer(keypointsCL, CL_TRUE, 0, keypoints.size() * sizeof(KeyPoint), &keypoints[0], 0, NULL);
+			m_queue.enqueueWriteBuffer(countCL, CL_TRUE, 0, sizeof(unsigned), &start_count, 0, NULL);
+
+			// Set arguments to kernel
+			res = kernel.setArg(0, *m_DoGs[i]);
+			res = kernel.setArg(1, *m_magnitudes[i - 1]);
+			res = kernel.setArg(2, *m_orientations[i - 1]);
+
+			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange);
+			m_queue.finish();
+
+			// blur magnitudes
+			float sigma = m_starting_sigma * std::pow(SIGMA_INCREMENT, i);
+
+			// does not work for some reason
+			//cl::Image2D *blurred_magn = new cl::Image2D(m_context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, m_width, m_height);
+			//
+			//std::vector<float> gaussian = GaussianKernel(1, 1.5*sigma);
+			//m_queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, gaussian.size() * sizeof(float), &gaussian[0], 0, NULL);
+			//
+			//res = kernel_blur.setArg(0, *m_magnitudes[i - 1]);
+			//res = kernel_blur.setArg(1, *blurred_magn);
+			//res = kernel_blur.setArg(2, convCL);
+			//
+			//res = m_queue.enqueueNDRangeKernel(kernel_blur, cl::NullRange, m_range, cl::NullRange);
+			//m_queue.finish();
+
+			//delete m_magnitudes[i - 1];
+			//m_magnitudes[i - 1] = blurred_magn;
+
+			res = kernel_gen_feature_points.setArg(0, *m_points[i-1]);
+			res = kernel_gen_feature_points.setArg(1, *m_magnitudes[i - 1]);
+			res = kernel_gen_feature_points.setArg(2, *m_orientations[i - 1]);
+			res = kernel_gen_feature_points.setArg(3, *m_default_image); // TODO: change this
+			res = kernel_gen_feature_points.setArg(4, keypointsCL);
+			res = kernel_gen_feature_points.setArg(5, kps_size);
+			res = kernel_gen_feature_points.setArg(6, GetKernelSize(1.5f *sigma));
+			res = kernel_gen_feature_points.setArg(7, static_cast<cl_uint>(i));
+			res = kernel_gen_feature_points.setArg(8, m_width);
+			res = kernel_gen_feature_points.setArg(9, m_height);
+			res = kernel_gen_feature_points.setArg(10, countCL);
+
+			res = m_queue.enqueueNDRangeKernel(kernel_gen_feature_points, cl::NullRange, m_range, cl::NullRange);
+			m_queue.finish();
+		}
+	}
+	catch (const cl::Error & err)
+	{
+		std::cerr << "Octave::ComputeLocalMaxima: " << err.what() << " with error: " << err.err() << std::endl;
+	}
+}
+
 float Octave::Gaussian(const int x, const int y, const float sigma)
 {
 	float r = sqrtf(x*x + y*y);
@@ -309,4 +420,19 @@ std::vector<float> Octave::GaussianKernel(const uint32_t kernel_size, const floa
 	}
 
 	return kernel;
+}
+
+unsigned int Octave::GetKernelSize(float sigma, float cut_off)
+{
+	const unsigned MAX_KERNEL_SIZE = 20;
+	size_t i;
+	for (i = 0; i < MAX_KERNEL_SIZE; i++)
+	{
+		if (exp(-((double)(i*i)) / (2.0*sigma*sigma)) < cut_off)
+		{
+			break;
+		}
+	}
+
+	return 2 * i - 1;
 }

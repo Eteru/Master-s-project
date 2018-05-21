@@ -1,4 +1,6 @@
 
+#include "Structs.h"
+
 const sampler_t srcSampler = 
 	CLK_NORMALIZED_COORDS_FALSE |
 	CLK_ADDRESS_CLAMP_TO_EDGE |
@@ -56,17 +58,7 @@ __kernel void difference(
 
 	float4 px1 = read_imagef(first, srcSampler, pos);
 	float4 px2 = read_imagef(second, srcSampler, pos);
-	float3 diff = (px1.xyz - px2.xyz);
-	//diff = clamp(diff, 0, 255);
-	//if (diff.x < 0)
-	//{
-	//	diff.y = -diff.x;
-	//	diff.x = 0;
-	//}
-	//else
-	//{
-	//	diff.y = 0;
-	//}
+	float3 diff = (px2.xyz - px1.xyz);
 
 	//printf("(%d, %d, %d) - (%d, %d, %d) = (%d, %d, %d)\n",
 	//	px1.x, px1.y, px1.z, px2.x, px2.y, px2.z, diff.x, diff.y, diff.z);
@@ -81,10 +73,15 @@ __kernel void find_extreme_points(
 	read_only  image2d_t next_dog,
 	write_only image2d_t output)
 {
+	const float CONTRAST_THRESHOLD = 0.0001f;
+	const float CURVATURE_THRESHOLD = 5.f;
+	//const float curvature_thresh = (CURVATURE_THRESHOLD + 1)*(CURVATURE_THRESHOLD + 1) / CURVATURE_THRESHOLD;
+	const float curvature_thresh = 10.f;
+
 	int2 pos = { get_global_id(0), get_global_id(1) };
 	float pixel = read_imagef(crt_dog, srcSampler, pos).x;
 
-	//printf("%d\n", pixel);
+	//printf("%f\n", pixel);
 
 	float4 max_no = { 0,0,0,1 };
 	float4 max_yes = { 1,1,1,1 };
@@ -99,6 +96,11 @@ __kernel void find_extreme_points(
 	{
 		for (int c = -1; c <= 1; ++c)
 		{
+			if (r == 0 && c == 0)
+			{
+				continue;
+			}
+
 			int2 coords = (int2)(pos.x + r, pos.y + c);
 
 			surrounding_values[index++] = read_imagef(crt_dog, srcSampler, coords).x;
@@ -144,9 +146,10 @@ __kernel void find_extreme_points(
 		pixel >= surrounding_values[22] &&
 		pixel >= surrounding_values[23] &&
 		pixel >= surrounding_values[24] &&
-		pixel >= surrounding_values[25])
+		pixel >= surrounding_values[25] /*&&
+		fabs(pixel) > CONTRAST_THRESHOLD*/)
 	{
-		//printf("max\n");
+		//printf("max %f\n", pixel);
 		is_max = true;
 	}
 	else if (pixel <= surrounding_values[0]  &&
@@ -174,17 +177,176 @@ __kernel void find_extreme_points(
 			 pixel <= surrounding_values[22] &&
 			 pixel <= surrounding_values[23] &&
 			 pixel <= surrounding_values[24] &&
-			 pixel <= surrounding_values[25])
+			 pixel <= surrounding_values[25] /*&&
+			 fabs(pixel) > CONTRAST_THRESHOLD*/)
 	{
-		//printf("min\n");
+		//printf("min %f\n", pixel);
+
 		is_min = true;
 	}
 
 	if (is_min || is_max)
 	{
-		write_imagef(output, pos, max_yes);
-		return;
+		float dxx =
+			read_imagef(crt_dog, srcSampler, (int2)(pos.x, pos.y - 1)).x +
+			read_imagef(crt_dog, srcSampler, (int2)(pos.x, pos.y + 1)).x -
+			2.f * read_imagef(crt_dog, srcSampler, pos).x;
+
+		float dyy =
+			read_imagef(crt_dog, srcSampler, (int2)(pos.x - 1, pos.y)).x +
+			read_imagef(crt_dog, srcSampler, (int2)(pos.x + 1, pos.y)).x -
+			2.f * read_imagef(crt_dog, srcSampler, pos).x;
+
+		float dxy =
+			(read_imagef(crt_dog, srcSampler, (int2)(pos.x - 1, pos.y - 1)).x +
+			read_imagef(crt_dog, srcSampler, (int2)(pos.x + 1, pos.y + 1)).x -
+			read_imagef(crt_dog, srcSampler, (int2)(pos.x - 1, pos.y + 1)).x -
+			read_imagef(crt_dog, srcSampler, (int2)(pos.x + 1, pos.y - 1)).x)
+			* 4.f;
+
+		float trH = dxx + dyy;
+		float detH = dxx * dyy - dxy*dxy;
+
+		float curvature_ratio = trH * trH / detH;
+
+		if (!signbit(detH) && curvature_ratio <= curvature_thresh)
+		{
+			write_imagef(output, pos, max_yes);
+			return;
+		}
+
+		//printf("[%d, %d] vs [%f, %f]\n", pos.x, pos.y, dxx, dyy);
+		//printf("Discarded point: %f, detH=%f, curvature_ratio=%f\n", pixel, detH, curvature_ratio);
 	}
 
 	write_imagef(output, pos, max_no);
+}
+
+__kernel void compute_magnitude_and_orientation(
+	read_only  image2d_t input,
+	write_only image2d_t magnitude,
+	write_only image2d_t orientation)
+{
+	int2 pos = { get_global_id(0), get_global_id(1) };
+
+	float dx = read_imagef(input, srcSampler, (int2)(pos.x + 1, pos.y)).x -
+				read_imagef(input, srcSampler, (int2)(pos.x - 1, pos.y)).x;
+	float dy = read_imagef(input, srcSampler, (int2)(pos.x, pos.y + 1)).x -
+				read_imagef(input, srcSampler, (int2)(pos.x, pos.y - 1)).x;
+
+	float magn = sqrt(dx*dx + dy*dy);
+	float orien = dx == 0.f ? 0.f : atan(dy / dx);
+
+	//printf("dx=%f, dy=%f, magn=%f, orien=%f\n", dx, dy, magn, orien);
+
+	write_imagef(magnitude, pos, (float4)(magn, magn, magn, 1.f));
+	write_imagef(orientation, pos, (float4)(orien, orien, orien, 1.f));
+}
+
+#define NUM_BINS 36
+__kernel void generate_feature_points(
+	read_only image2d_t keypoints,
+	read_only image2d_t magnitude,
+	read_only image2d_t orientation,
+	write_only image2d_t output,
+	global write_only struct KeyPoint* kps,
+	const unsigned int keypoints_count,
+	const unsigned int kernel_size,
+	const unsigned int scale,
+	const unsigned int width,
+	const unsigned int height,
+	global unsigned int* count)
+{
+	int2 pos = { get_global_id(0), get_global_id(1) };
+
+	float pixel = read_imagef(keypoints, srcSampler, pos).x;
+
+	if (pixel < 0.0001f)
+	{
+		return;
+	}
+
+	int HALF_KERNEL_SIZE = kernel_size >> 1;
+	float histogram[NUM_BINS];
+	//printf("%f\n", histogram[5]);
+	//
+	//for (int i = 0; i < NUM_BINS; ++i)
+	//{
+	//	histogram[i] = 0.f;
+	//}
+
+	for (int r = -HALF_KERNEL_SIZE; r <= HALF_KERNEL_SIZE; ++r)
+	{
+		for (int c = -HALF_KERNEL_SIZE; c <= HALF_KERNEL_SIZE; ++c)
+		{
+			int2 coords = (int2)(pos.x + r, pos.y + c);
+			float value = read_imagef(orientation, srcSampler, coords).x + M_PI;
+
+			// convert to degrees
+			unsigned orientationDegrees = value * 180 * M_1_PI;
+
+			histogram[orientationDegrees / (360 / NUM_BINS)] += read_imagef(magnitude, srcSampler, coords).x;
+
+			//printf("%f -> %d : %f\n", value, orientationDegrees, read_imagef(magnitude, srcSampler, coords).x);
+		}
+	}
+
+	double max_peak = histogram[0];
+	unsigned int max_peak_index = 0;
+
+	for (int i = 1; i < NUM_BINS; ++i)
+	{
+		if (histogram[i] > max_peak)
+		{
+			max_peak = histogram[i];
+			max_peak_index = i;
+		}
+	}
+
+	atomic_inc(&count[0]);
+	if (count[0] < keypoints_count)
+	{
+		printf("%d\n", count[0]);
+		kps[count[0]].x = (float)pos.x / (float)width;
+		kps[count[0]].y = (float)pos.y / (float)height;
+		kps[count[0]].scale = scale;
+		kps[count[0]].magnitude = histogram[max_peak_index];
+		kps[count[0]].orientation = max_peak_index;
+
+		float thresh = 0.8f * max_peak;
+		for (int i = 0; i < max_peak_index; ++i)
+		{
+			if (histogram[i] > thresh)
+			{
+				atomic_inc(&count[0]);
+
+				kps[count[0]].x = (float)pos.x / (float)width;
+				kps[count[0]].y = (float)pos.y / (float)height;
+				kps[count[0]].scale = scale;
+				kps[count[0]].magnitude = histogram[i];
+				kps[count[0]].orientation = i;
+			}
+		}
+
+		for (int i = max_peak_index + 1; i < NUM_BINS; ++i)
+		{
+			if (histogram[i] > thresh)
+			{
+				atomic_inc(&count[0]);
+
+				kps[count[0]].x = (float)pos.x / (float)width;
+				kps[count[0]].y = (float)pos.y / (float)height;
+				kps[count[0]].scale = scale;
+				kps[count[0]].magnitude = histogram[i];
+				kps[count[0]].orientation = i;
+			}
+		}
+	}
+
+
+	// TODO: generate more feature points if needed
+
+	//printf("peak: [%d] - %f\n", max_peak_index, max_peak);
+
+
 }

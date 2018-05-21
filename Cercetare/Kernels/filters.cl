@@ -9,7 +9,7 @@ __kernel void convolute(
 	__constant read_only float * filter
 )
 {
-	int HALF_FILTER_SIZE	= (int)(filter[0]) / 2;
+	int HALF_FILTER_SIZE	= (int)(filter[0]) >> 1;
 	const int2 imgCoords	= (int2)(get_global_id(0), get_global_id(1));
 
 	int fIndex = 1;
@@ -22,14 +22,15 @@ __kernel void convolute(
 		for (int c = -HALF_FILTER_SIZE; c <= HALF_FILTER_SIZE; ++c)
 		{
 			int2 coords = (int2)(imgCoords.x + r, imgCoords.y + c);
-			float4 rgba = read_imagef(input, srcSampler, coords);
+			float3 rgba = read_imagef(input, srcSampler, coords).xyz;
 
-			sum += (float3)(rgba.x * filter[fIndex], rgba.y * filter[fIndex], rgba.z * filter[fIndex]);
+			sum += rgba * filter[fIndex];
 			++fIndex;
 		}
 	}
 
-	write_imagef(output, imgCoords, (float4)(sum.xyz, 1.f));
+	//printf("blurred: %f\n", sum.x);
+	write_imagef(output, imgCoords, (float4)(sum, 1.f));
 }
 
 __kernel void color_smooth_filter(
