@@ -317,6 +317,7 @@ void Octave::ComputeOrientation()
 
 		cl_int res;
 		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_MAGN_AND_ORIEN);
+		cl::Kernel & kernel_magn_ori_interp = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_MAGN_AND_ORIEN_INTERP);
 		cl::Kernel & kernel_blur = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
 		cl::Kernel & kernel_gen_feature_points = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_GENERATE_FEATURE_POINTS);
 		cl::Buffer convCL = cl::Buffer(m_context, CL_MEM_READ_ONLY, (1 + BLUR_KERNEL_SIZE * BLUR_KERNEL_SIZE) * sizeof(float), 0, 0);
@@ -360,6 +361,7 @@ void Octave::ComputeOrientation()
 			//delete m_magnitudes[i - 1];
 			//m_magnitudes[i - 1] = blurred_magn;
 
+			// compute keypoints
 			res = kernel_gen_feature_points.setArg(0, *m_points[i-1]);
 			res = kernel_gen_feature_points.setArg(1, *m_magnitudes[i - 1]);
 			res = kernel_gen_feature_points.setArg(2, *m_orientations[i - 1]);
@@ -373,6 +375,16 @@ void Octave::ComputeOrientation()
 			res = kernel_gen_feature_points.setArg(10, countCL);
 
 			res = m_queue.enqueueNDRangeKernel(kernel_gen_feature_points, cl::NullRange, m_range, cl::NullRange);
+			m_queue.finish();
+
+			// compute inerp magnitude and orientation
+			res = kernel_magn_ori_interp.setArg(0, *m_DoGs[i]);
+			res = kernel_magn_ori_interp.setArg(1, *m_magnitudes[i - 1]);
+			res = kernel_magn_ori_interp.setArg(2, *m_orientations[i - 1]);
+			res = kernel_magn_ori_interp.setArg(3, m_width);
+			res = kernel_magn_ori_interp.setArg(4, m_height);
+
+			res = m_queue.enqueueNDRangeKernel(kernel_magn_ori_interp, cl::NullRange, m_range, cl::NullRange);
 			m_queue.finish();
 		}
 	}

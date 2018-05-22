@@ -243,6 +243,32 @@ __kernel void compute_magnitude_and_orientation(
 	write_imagef(orientation, pos, (float4)(orien, orien, orien, 1.f));
 }
 
+__kernel void compute_magnitude_and_orientation_interp(
+	read_only  image2d_t input,
+	write_only image2d_t magnitude,
+	write_only image2d_t orientation,
+	const unsigned int width,
+	const unsigned int height)
+{
+	int2 pos = { get_global_id(0), get_global_id(1) };
+	float2 pos_f = (float2)(pos.x + 0.5f, pos.y + 0.5f) / (float2)(width, height);
+	float2 pos_f_p_1 = (float2)(pos.x + 0.5f + 1, pos.y + 0.5f + 1) / (float2)(width, height);
+	float2 pos_f_m_1 = (float2)(pos.x + 0.5f - 1, pos.y + 0.5f - 1) / (float2)(width, height);
+	
+	float dx = read_imagef(input, scalingSampler, (float2)(pos_f_p_1.x, pos_f.y)).x -
+		read_imagef(input, scalingSampler, (float2)(pos_f_m_1.x, pos_f.y)).x;
+	float dy = read_imagef(input, scalingSampler, (float2)(pos_f.x, pos_f_p_1.y)).x -
+		read_imagef(input, scalingSampler, (float2)(pos_f.x, pos_f_m_1.y)).x;
+
+	float magn = sqrt(dx*dx + dy*dy);
+	float orien = dx == 0.f ? 0.f : atan(dy / dx);
+
+	//printf("dx=%f, dy=%f, magn=%f, orien=%f\n", dx, dy, magn, orien);
+
+	write_imagef(magnitude, pos, (float4)(magn, magn, magn, 1.f));
+	write_imagef(orientation, pos, (float4)(orien, orien, orien, 1.f));
+}
+
 #define NUM_BINS 36
 __kernel void generate_feature_points(
 	read_only image2d_t keypoints,
