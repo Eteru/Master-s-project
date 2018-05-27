@@ -29,4 +29,5 @@ namespace Constants
 	const std::string KERNEL_MAGN_AND_ORIEN = "compute_magnitude_and_orientation";
 	const std::string KERNEL_MAGN_AND_ORIEN_INTERP = "compute_magnitude_and_orientation_interp";
 	const std::string KERNEL_GENERATE_FEATURE_POINTS = "generate_feature_points";
+	const std::string KERNEL_EXTRACT_FEATURE_POINTS = "extract_feature_points";
 }

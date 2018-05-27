@@ -16,6 +16,8 @@ const sampler_t scalingSampler =
 	CLK_ADDRESS_NONE |
 	CLK_FILTER_LINEAR;
 
+#define FLOAT_CORRECTNESS 1000
+
 __kernel void int_to_float(read_only image2d_t input, write_only image2d_t output)
 {
 	int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
@@ -234,7 +236,7 @@ __kernel void compute_magnitude_and_orientation(
 	float dy = read_imagef(input, srcSampler, (int2)(pos.x, pos.y + 1)).x -
 				read_imagef(input, srcSampler, (int2)(pos.x, pos.y - 1)).x;
 
-	float magn = sqrt(dx*dx + dy*dy);
+	float magn = FLOAT_CORRECTNESS * sqrt(dx*dx + dy*dy);
 	float orien = dx == 0.f ? 0.f : atan(dy / dx);
 
 	//printf("dx=%f, dy=%f, magn=%f, orien=%f\n", dx, dy, magn, orien);
@@ -260,7 +262,7 @@ __kernel void compute_magnitude_and_orientation_interp(
 	float dy = read_imagef(input, scalingSampler, (float2)(pos_f.x, pos_f_p_1.y)).x -
 		read_imagef(input, scalingSampler, (float2)(pos_f.x, pos_f_m_1.y)).x;
 
-	float magn = sqrt(dx*dx + dy*dy);
+	float magn = FLOAT_CORRECTNESS * sqrt(dx*dx + dy*dy);
 	float orien = dx == 0.f ? 0.f : atan(dy / dx);
 
 	//printf("dx=%f, dy=%f, magn=%f, orien=%f\n", dx, dy, magn, orien);
@@ -287,19 +289,13 @@ __kernel void generate_feature_points(
 
 	float pixel = read_imagef(keypoints, srcSampler, pos).x;
 
-	if (pixel < 0.0001f)
+	if (pixel == 0.f)
 	{
 		return;
 	}
 
 	int HALF_KERNEL_SIZE = kernel_size >> 1;
 	float histogram[NUM_BINS];
-	//printf("%f\n", histogram[5]);
-	//
-	//for (int i = 0; i < NUM_BINS; ++i)
-	//{
-	//	histogram[i] = 0.f;
-	//}
 
 	for (int r = -HALF_KERNEL_SIZE; r <= HALF_KERNEL_SIZE; ++r)
 	{
@@ -312,8 +308,6 @@ __kernel void generate_feature_points(
 			unsigned orientationDegrees = value * 180 * M_1_PI;
 
 			histogram[orientationDegrees / (360 / NUM_BINS)] += read_imagef(magnitude, srcSampler, coords).x;
-
-			//printf("%f -> %d : %f\n", value, orientationDegrees, read_imagef(magnitude, srcSampler, coords).x);
 		}
 	}
 
@@ -329,28 +323,35 @@ __kernel void generate_feature_points(
 		}
 	}
 
-	atomic_inc(&count[0]);
-	if (count[0] < keypoints_count)
+	//printf("Thread: (%d,%d)\n", pos.x, pos.y);
+
+	int index = atomic_inc(&count[0]);
+	if (index < keypoints_count)
 	{
-		printf("%d\n", count[0]);
-		kps[count[0]].x = (float)pos.x / (float)width;
-		kps[count[0]].y = (float)pos.y / (float)height;
-		kps[count[0]].scale = scale;
-		kps[count[0]].magnitude = histogram[max_peak_index];
-		kps[count[0]].orientation = max_peak_index;
+		kps[index].x_interp = (float)pos.x / (float)width;
+		kps[index].y_interp = (float)pos.y / (float)height;
+		kps[index].x = pos.x;
+		kps[index].y = pos.y;
+		kps[index].scale = scale;
+		kps[index].magnitude = histogram[max_peak_index];
+		kps[index].orientation = max_peak_index;
+		//printf("[count=%d]: hist=%f, thresh=%f\n", index, max_peak, max_peak * 0.8f);
 
 		float thresh = 0.8f * max_peak;
 		for (int i = 0; i < max_peak_index; ++i)
 		{
 			if (histogram[i] > thresh)
 			{
-				atomic_inc(&count[0]);
+				index = atomic_inc(&count[0]);
 
-				kps[count[0]].x = (float)pos.x / (float)width;
-				kps[count[0]].y = (float)pos.y / (float)height;
-				kps[count[0]].scale = scale;
-				kps[count[0]].magnitude = histogram[i];
-				kps[count[0]].orientation = i;
+				kps[index].x_interp = (float)pos.x / (float)width;
+				kps[index].y_interp = (float)pos.y / (float)height;
+				kps[index].x = pos.x;
+				kps[index].y = pos.y;
+				kps[index].scale = scale;
+				kps[index].magnitude = histogram[i];
+				kps[index].orientation = i;
+				//printf("[count=%d]: hist=%f, thresh=%f\n", index, max_peak, max_peak * 0.8f);
 			}
 		}
 
@@ -358,21 +359,136 @@ __kernel void generate_feature_points(
 		{
 			if (histogram[i] > thresh)
 			{
-				atomic_inc(&count[0]);
+				index = atomic_inc(&count[0]);
 
-				kps[count[0]].x = (float)pos.x / (float)width;
-				kps[count[0]].y = (float)pos.y / (float)height;
-				kps[count[0]].scale = scale;
-				kps[count[0]].magnitude = histogram[i];
-				kps[count[0]].orientation = i;
+				kps[index].x_interp = (float)pos.x / (float)width;
+				kps[index].y_interp = (float)pos.y / (float)height;
+				kps[index].x = pos.x;
+				kps[index].y = pos.y;
+				kps[index].scale = scale;
+				kps[index].magnitude = histogram[i];
+				kps[index].orientation = i;
+				//printf("[count=%d]: hist=%f, thresh=%f\n", index, max_peak, max_peak * 0.8f);
 			}
 		}
 	}
 
+	barrier(CLK_GLOBAL_MEM_FENCE);
+	//printf("count=%d, kps_size=%d\n", count[0], keypoints_count);
+}
 
-	// TODO: generate more feature points if needed
+#define DESC_NUM_BINS 8
+__kernel void extract_feature_points(
+	read_only image2d_t magnitude,
+	read_only image2d_t orientation,
+	global read_only float* weights,
+	global write_only struct KeyPoint* kps,
+	global read_write double* feature_vector,
+	const unsigned int width,
+	const unsigned int height)
+{
+	const int FV_SIZE = 128;
+	const int WINDOW_SIZE = 16;
+	const int SMALL_WINDOW_SIZE = 4;
+	const int HALF_WINDOW_SIZE = WINDOW_SIZE >> 1;
+	const float M_2X_PI = 2 * M_PI;
+	const float FV_THRESHOLD = 0.2f;
 
-	//printf("peak: [%d] - %f\n", max_peak_index, max_peak);
+	int pos = get_global_id(0);
+	int fv_start_index = FV_SIZE * pos;
+	struct KeyPoint kp = kps[pos];
+	int x = kp.x;
+	int y = kp.y;
+
+	double histogram[DESC_NUM_BINS];
+
+	uint w_index = 0;
+	uint fv_index = 0;
+
+	//printf("[%d]: %d, %d, magn=%f, ori=%f, start=%d, end=%d\n", pos, x, y, kp.magnitude, kp.orientation, x - HALF_WINDOW_SIZE, x + HALF_WINDOW_SIZE);
+	for (int wx = x - HALF_WINDOW_SIZE; wx < x + HALF_WINDOW_SIZE; wx += SMALL_WINDOW_SIZE)
+	{
+
+		for (int wy = y - HALF_WINDOW_SIZE; wy < y + HALF_WINDOW_SIZE; wy += SMALL_WINDOW_SIZE)
+		{
+			for (int swx = wx; swx < wx + SMALL_WINDOW_SIZE; ++swx)
+			{
+				for (int swy = wy; swy < wy + SMALL_WINDOW_SIZE; ++swy)
+				{
+					if (swx < 0 || swx > width || swy < 0 || swy > height)
+					{
+						++w_index;
+						continue;
+					}
+
+					// rotation invariance
+					float value = read_imagef(orientation, srcSampler, (int2)(swx, swy)).x;
+					value -= kp.orientation;
+
+					while (value < 0)		{ value += M_2X_PI; }
+					while (value > M_2X_PI) { value -= M_2X_PI; }
+
+					// convert to degrees
+					unsigned orientationDegrees = value * 180 * M_1_PI;
+
+					histogram[orientationDegrees / (360 / DESC_NUM_BINS)] += read_imagef(magnitude, srcSampler, (int2)(swx, swy)).x * weights[w_index];
+
+					++w_index;
+				}
+			}
+
+			//printf("[%d]: %lf, %lf, %lf, %lf, %lf, %lf, %lf, %lf\n",
+			//	pos,
+			//	histogram[0],
+			//	histogram[1],
+			//	histogram[2],
+			//	histogram[3],
+			//	histogram[4],
+			//	histogram[5],
+			//	histogram[6],
+			//	histogram[7]);
+
+			for (int i = 0; i < DESC_NUM_BINS; ++i)
+			{
+				feature_vector[fv_start_index + fv_index] = histogram[i];
+
+				histogram[i] = 0.0;
+
+				++fv_index;
+			}
+		}
+	}
+
+	// NORMALIZE, THRESHOLD AND NORMALIZE AGAIN
+	double norm = 0.f;
+	for (int i = 0; i < FV_SIZE; ++i)
+	{
+		norm += pow(feature_vector[fv_start_index + i], 2);
+		//printf("[%d]: %lf, norm=%lf\n", fv_start_index + i, feature_vector[fv_start_index + i], norm);
+	}
+
+	norm = rsqrt(norm);
+
+	float norm_s = 0.f;
+	for (int i = 0; i < FV_SIZE; ++i)
+	{
+		feature_vector[fv_start_index + i] *= norm;
+		//printf("%f ", feature_vector[fv_start_index + i]);
+
+		if (feature_vector[fv_start_index + i] > FV_THRESHOLD)
+		{
+			feature_vector[fv_start_index + i] = FV_THRESHOLD;
+		}
+
+		norm_s += pow(feature_vector[fv_start_index + i], 2);
+	}
+
+	//printf("[%d]: norm=%f, rsqsrt(norm)=%f\n", pos, norm_s, rsqrt(norm_s));
+	norm_s = rsqrt(norm_s);
 
 
+	for (int i = 0; i < FV_SIZE; ++i)
+	{
+		feature_vector[fv_start_index + i] *= norm;
+	}
 }

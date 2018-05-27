@@ -20,6 +20,8 @@ cl::Image2D * SIFT::Run(cl::Image2D * image, uint32_t w, uint32_t h)
 	static int crt_img = 0;
 	std::vector<Octave> m_octaves;
 
+	m_fvps[image] = {};
+
 	cl::Image2D * ref_img = SetupReferenceImage(image, w, h);
 
 	uint32_t crt_w = 2 * w;
@@ -43,7 +45,8 @@ cl::Image2D * SIFT::Run(cl::Image2D * image, uint32_t w, uint32_t h)
 	{
 		m_octaves[i].DoG();
 		m_octaves[i].ComputeLocalMaxima();
-		m_octaves[i].ComputeOrientation();
+		auto fvps = m_octaves[i].ComputeOrientation();
+		m_fvps[image].insert(m_fvps[image].end(), fvps.begin(), fvps.end());
 		WriteOctaveImagesOnDisk(m_octaves[i], i);
 	}
 

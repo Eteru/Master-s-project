@@ -307,8 +307,9 @@ void Octave::ComputeLocalMaxima()
 	}
 }
 
-void Octave::ComputeOrientation()
+std::vector<double> Octave::ComputeOrientation()
 {
+	std::vector<double> fvps;
 	try
 	{
 		unsigned kps_size = m_width * m_height;
@@ -320,19 +321,24 @@ void Octave::ComputeOrientation()
 		cl::Kernel & kernel_magn_ori_interp = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_MAGN_AND_ORIEN_INTERP);
 		cl::Kernel & kernel_blur = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
 		cl::Kernel & kernel_gen_feature_points = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_GENERATE_FEATURE_POINTS);
+		cl::Kernel & kernel_extract_feature_points = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_EXTRACT_FEATURE_POINTS);
+
 		cl::Buffer convCL = cl::Buffer(m_context, CL_MEM_READ_ONLY, (1 + BLUR_KERNEL_SIZE * BLUR_KERNEL_SIZE) * sizeof(float), 0, 0);
 		cl::Buffer keypointsCL = cl::Buffer(m_context, CL_MEM_READ_WRITE, kps_size * sizeof(KeyPoint), 0, 0);
-		cl::Buffer countCL = cl::Buffer(m_context, CL_MEM_READ_ONLY, sizeof(unsigned), 0, 0);
+		cl::Buffer countCL = cl::Buffer(m_context, CL_MEM_READ_WRITE, sizeof(unsigned), 0, 0);
+		cl::Buffer weightsCL = cl::Buffer(m_context, CL_MEM_READ_WRITE, WEIGHT_KERNEL_SIZE * WEIGHT_KERNEL_SIZE * sizeof(float), 0, 0);
 
+		std::vector<float> weights = GaussianKernel(WEIGHT_KERNEL_SIZE, WEIGHT_KERNEL_SIZE >> 1);
+		m_queue.enqueueWriteBuffer(weightsCL, CL_TRUE, 0, (weights.size() - 1) * sizeof(float), &weights[1], 0, NULL);
 
 		uint32_t crt_feature_i = 0;
 		for (size_t i = 1; i < m_DoGs.size() - 1; ++i)
 		{
 			// kps
-			unsigned start_count = 0;
+			unsigned fv_count = 0;
 			std::vector<KeyPoint> keypoints(kps_size);
-			m_queue.enqueueWriteBuffer(keypointsCL, CL_TRUE, 0, keypoints.size() * sizeof(KeyPoint), &keypoints[0], 0, NULL);
-			m_queue.enqueueWriteBuffer(countCL, CL_TRUE, 0, sizeof(unsigned), &start_count, 0, NULL);
+			//m_queue.enqueueWriteBuffer(keypointsCL, CL_TRUE, 0, keypoints.size() * sizeof(KeyPoint), &keypoints[0], 0, NULL);
+			m_queue.enqueueWriteBuffer(countCL, CL_TRUE, 0, sizeof(unsigned), &fv_count, 0, NULL);
 
 			// Set arguments to kernel
 			res = kernel.setArg(0, *m_DoGs[i]);
@@ -386,12 +392,43 @@ void Octave::ComputeOrientation()
 
 			res = m_queue.enqueueNDRangeKernel(kernel_magn_ori_interp, cl::NullRange, m_range, cl::NullRange);
 			m_queue.finish();
+
+			m_queue.enqueueReadBuffer(countCL, CL_TRUE, 0, sizeof(unsigned), &fv_count, 0, NULL);
+
+			std::cout << "Count=" << fv_count << std::endl;
+			if (0 == fv_count)
+			{
+				continue;
+			}
+
+			std::vector<double> fv(fv_count * WEIGHT_KERNEL_SIZE * WEIGHT_KERNEL_SIZE);
+			cl::Buffer fvCL = cl::Buffer(m_context, CL_MEM_READ_WRITE, fv.size() * sizeof(double), 0, 0);
+
+			res = kernel_extract_feature_points.setArg(0, *m_magnitudes[i - 1]);
+			res = kernel_extract_feature_points.setArg(1, *m_orientations[i - 1]);
+			res = kernel_extract_feature_points.setArg(2, weightsCL);
+			res = kernel_extract_feature_points.setArg(3, keypointsCL);
+			res = kernel_extract_feature_points.setArg(4, fvCL);
+			res = kernel_extract_feature_points.setArg(5, m_width);
+			res = kernel_extract_feature_points.setArg(6, m_height);
+
+			res = m_queue.enqueueNDRangeKernel(kernel_extract_feature_points, cl::NullRange, cl::NDRange(fv_count, 1), cl::NullRange);
+			m_queue.finish();
+
+			m_queue.enqueueReadBuffer(fvCL, CL_TRUE, 0, fv.size() * sizeof(double), &fv[0], 0, NULL);
+			m_queue.finish();
+
+
+			// TODO: copy all fv-s to single vector
+			fvps.insert(fvps.end(), fv.begin(), fv.end());
 		}
 	}
 	catch (const cl::Error & err)
 	{
 		std::cerr << "Octave::ComputeLocalMaxima: " << err.what() << " with error: " << err.err() << std::endl;
 	}
+
+	return fvps;
 }
 
 float Octave::Gaussian(const int x, const int y, const float sigma)
@@ -410,10 +447,23 @@ std::vector<float> Octave::GaussianKernel(const uint32_t kernel_size, const floa
 	size_t idx = 1;
 	float sum = 0;
 	int half_kernel_size = kernel_size * 0.5;
-	// compute values
-	for (int row = -half_kernel_size; row <= half_kernel_size; ++row)
+	int start, end;
+
+	if (kernel_size % 2 == 0)
 	{
-		for (int col = -half_kernel_size; col <= half_kernel_size; ++col)
+		start = -(kernel_size >> 1);
+		end = -start - 1;
+	}
+	else
+	{
+		end = kernel_size >> 1;
+		start = -end;
+	}
+
+	// compute values
+	for (int row = start; row <= end; ++row)
+	{
+		for (int col = start; col <= end; ++col)
 		{
 			double x = Gaussian(row, col, sigma);
 			kernel[idx++] = x;

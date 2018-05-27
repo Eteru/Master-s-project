@@ -20,9 +20,11 @@ struct Neuron
 
 struct KeyPoint
 {
-	float x;
-	float y;
+	float x_interp;
+	float y_interp;
 	float magnitude;
 	float orientation;
+	unsigned x;
+	unsigned y;
 	unsigned scale;
 };

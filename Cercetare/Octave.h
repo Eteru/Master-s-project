@@ -30,10 +30,11 @@ public:
 
 	void DoG();
 	void ComputeLocalMaxima();
-	void ComputeOrientation();
+	std::vector<double> ComputeOrientation();
 
 private:
 	static const uint32_t BLUR_KERNEL_SIZE = 7;
+	static const uint32_t WEIGHT_KERNEL_SIZE = 16;
 	static float SIGMA_INCREMENT;
 	uint32_t m_width;
 	uint32_t m_height;
