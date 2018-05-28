@@ -269,6 +269,10 @@ void MainWindow::OnCustomConvolutionClicked()
 	c_diag.exec();
 
 	std::vector<float> kernel_values = c_diag.GetKernel();
+	if (true == kernel_values.empty())
+	{
+		return;
+	}
 
 	m_cl.CustomFilter(m_img, kernel_values);
 	labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));

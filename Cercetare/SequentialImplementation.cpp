@@ -110,9 +110,15 @@ void SequentialImplementation::ColorSmoothing(QImage & img)
 float SequentialImplementation::KMeans(QImage & img, const int centroid_count)
 {
 	// copy data to local vector
-	std::vector<uchar> values;
+	std::vector<uchar> values_ui;
 
-	CopyImageToBuffer(img, values);
+	CopyImageToBuffer(img, values_ui);
+	std::vector<float> values;
+
+	for (size_t i = 0; i < values_ui.size(); ++i)
+	{
+		values.push_back(values_ui[i] / 255.f);
+	}
 
 	// generate centroids
 	std::vector<Centroid> centroids;
@@ -141,9 +147,9 @@ float SequentialImplementation::KMeans(QImage & img, const int centroid_count)
 				}
 			}
 
-			centroids[centroid_idx].sum_x += static_cast<unsigned>(values[i]);
-			centroids[centroid_idx].sum_y += static_cast<unsigned>(values[i + 1]);
-			centroids[centroid_idx].sum_z += static_cast<unsigned>(values[i + 2]);
+			centroids[centroid_idx].sum.x += static_cast<unsigned>(values[i]);
+			centroids[centroid_idx].sum.y += static_cast<unsigned>(values[i + 1]);
+			centroids[centroid_idx].sum.z += static_cast<unsigned>(values[i + 2]);
 			++centroids[centroid_idx].count;
 		}
 
@@ -152,14 +158,14 @@ float SequentialImplementation::KMeans(QImage & img, const int centroid_count)
 		{
 			if (0 != centroids[c].count)
 			{
-				centroids[c].x = centroids[c].sum_x / centroids[c].count;
-				centroids[c].y = centroids[c].sum_y / centroids[c].count;
-				centroids[c].z = centroids[c].sum_z / centroids[c].count;
+				centroids[c].value.x = centroids[c].sum.x / centroids[c].count;
+				centroids[c].value.y = centroids[c].sum.y / centroids[c].count;
+				centroids[c].value.z = centroids[c].sum.z / centroids[c].count;
 			}
 
-			centroids[c].sum_x = 0;
-			centroids[c].sum_y = 0;
-			centroids[c].sum_z = 0;
+			centroids[c].sum.x = 0;
+			centroids[c].sum.y = 0;
+			centroids[c].sum.z = 0;
 			centroids[c].count = 0;
 		}
 	}
@@ -181,14 +187,19 @@ float SequentialImplementation::KMeans(QImage & img, const int centroid_count)
 			}
 		}
 
-		values[i] = centroids[centroid_idx].x;
-		values[i + 1] = centroids[centroid_idx].y;
-		values[i + 2] = centroids[centroid_idx].z;
+		values[i] = centroids[centroid_idx].value.x;
+		values[i + 1] = centroids[centroid_idx].value.y;
+		values[i + 2] = centroids[centroid_idx].value.z;
 	}
 
 	auto end = std::chrono::system_clock::now();
 
-	CopyBufferToImage(values, img);
+	for (size_t i = 0; i < values_ui.size(); ++i)
+	{
+		values_ui[i] = static_cast<unsigned>(values_ui[i] * 255);
+	}
+
+	CopyBufferToImage(values_ui, img);
 
 	return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 }
@@ -226,9 +237,9 @@ float SequentialImplementation::SOMSegmentation(QImage & img, QImage * ground_tr
 
 			for (size_t c = 0; c < neurons.size(); ++c)
 			{
-				uint dist_X = values[index] - neurons[c].x;
-				uint dist_Y = values[index + 1] - neurons[c].y;
-				uint dist_Z = values[index + 2] - neurons[c].z;
+				uint dist_X = values[index] - neurons[c].value.x;
+				uint dist_Y = values[index + 1] - neurons[c].value.y;
+				uint dist_Z = values[index + 2] - neurons[c].value.z;
 
 				float d = sqrt((float)(dist_X * dist_X + dist_Y * dist_Y + dist_Z * dist_Z));
 
@@ -255,9 +266,9 @@ float SequentialImplementation::SOMSegmentation(QImage & img, QImage * ground_tr
 
 				float influence = exp(-(n_dist * n_dist) / (2.f * (neigh_dist * neigh_dist)));
 
-				neurons[c].x += learning_rate * influence * (int)(values[index] - neurons[c].x);
-				neurons[c].y += learning_rate * influence * (int)(values[index + 1] - neurons[c].y);
-				neurons[c].z += learning_rate * influence * (int)(values[index + 2] - neurons[c].z);
+				neurons[c].value.x += learning_rate * influence * (int)(values[index] - neurons[c].value.x);
+				neurons[c].value.y += learning_rate * influence * (int)(values[index + 1] - neurons[c].value.y);
+				neurons[c].value.z += learning_rate * influence * (int)(values[index + 2] - neurons[c].value.z);
 			}
 		}
 	}
@@ -269,9 +280,9 @@ float SequentialImplementation::SOMSegmentation(QImage & img, QImage * ground_tr
 
 		for (size_t c = 0; c < neurons.size(); ++c)
 		{
-			uint dist_X = values[index] - neurons[c].x;
-			uint dist_Y = values[index + 1] - neurons[c].y;
-			uint dist_Z = values[index + 2] - neurons[c].z;
+			uint dist_X = values[index] - neurons[c].value.x;
+			uint dist_Y = values[index + 1] - neurons[c].value.y;
+			uint dist_Z = values[index + 2] - neurons[c].value.z;
 
 			float d = sqrt((float)(dist_X * dist_X + dist_Y * dist_Y + dist_Z * dist_Z));
 
@@ -283,9 +294,9 @@ float SequentialImplementation::SOMSegmentation(QImage & img, QImage * ground_tr
 			}
 		}
 
-		values[index] = neurons[bmu].x;
-		values[index + 1] = neurons[bmu].y;
-		values[index + 2] = neurons[bmu].z;
+		values[index] = neurons[bmu].value.x;
+		values[index + 1] = neurons[bmu].value.y;
+		values[index + 2] = neurons[bmu].value.z;
 	}
 
 	auto end = std::chrono::system_clock::now();

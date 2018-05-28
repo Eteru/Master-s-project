@@ -53,13 +53,13 @@ void Implementation::GenerateCentroids(const uint32_t count, std::vector<Centroi
 	{
 		centroid = {};
 
-		centroid.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		centroid.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		centroid.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		centroid.value.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		centroid.value.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		centroid.value.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-		centroid.sum_x = 0;
-		centroid.sum_y = 0;
-		centroid.sum_z = 0;
+		centroid.sum.x = 0;
+		centroid.sum.y = 0;
+		centroid.sum.z = 0;
 
 		centroid.count = 0;
 	}
@@ -74,11 +74,11 @@ void Implementation::GenerateNeurons(const uint32_t count, std::vector<Neuron>& 
 	{
 		neuron = {};
 
-		neuron.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		neuron.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		neuron.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		neuron.value.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		neuron.value.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		neuron.value.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-		std::cout << " (" << neuron.x << ", " << neuron.y << ", " << neuron.z << ")";
+		std::cout << " (" << neuron.value.x << ", " << neuron.value.y << ", " << neuron.value.z << ")";
 	}
 
 	std::cout << std::endl;
@@ -86,7 +86,7 @@ void Implementation::GenerateNeurons(const uint32_t count, std::vector<Neuron>& 
 
 float Implementation::Distance(const Centroid & c, uint x, uint y, uint z) const
 {
-	return c.x * c.x + x * x - 2 * c.x * x +
-		c.y * c.y + y * y - 2 * c.y * y +
-		c.z * c.z + z * z - 2 * c.z * z;
+	return c.value.x * c.value.x + x * x - 2 * c.value.x * x +
+		c.value.y * c.value.y + y * y - 2 * c.value.y * y +
+		c.value.z * c.value.z + z * z - 2 * c.value.z * z;
 }

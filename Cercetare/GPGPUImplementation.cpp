@@ -525,7 +525,7 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 				// Chose a random input value
 				size_t index = (std::rand() % total_sz) * 4;
 
-				cl_uint3 value =
+				cl_float3 value =
 				{
 					static_cast<cl_float>(m_values_orig[index] / 255.f),
 					static_cast<cl_float>(m_values_orig[index + 1] / 255.f),
@@ -539,11 +539,6 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 				m_queue.finish();
 
 				ret += event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
-
-				//m_queue.finish();
-				//m_queue.enqueueReadBuffer(bmu_idxCL, CL_TRUE, 0, sizeof(int), &bmu_idx, 0, NULL);
-				//
-				//std::cout << bmu_idx << std::endl;
 
 				// update weights
 				float neigh_dist = (neurons.size() - 1) * exp(-static_cast<double>(epoch) / time_constant);
@@ -688,7 +683,7 @@ std::pair<float, float> GPGPUImplementation::CheckSegmentationNeurons(cl::Buffer
 		std::cout << "Final neurons: ";
 		for (Neuron & neuron : neurons)
 		{
-			std::cout << " (" << neuron.x << ", " << neuron.y << ", " << neuron.z << ")";
+			std::cout << " (" << neuron.value.x << ", " << neuron.value.y << ", " << neuron.value.z << ")";
 		}
 		std::cout << std::endl;
 
@@ -716,11 +711,9 @@ float GPGPUImplementation::GaussianFunction(int niu, int thetha, int cluster_cou
 
 float GPGPUImplementation::NormalizedEuclideanDistance(const Neuron & n1, const Neuron & n2) const
 {
-	unsigned x = n1.x - n2.x;
-	unsigned y = n1.y - n2.y;
-	unsigned z = n1.z - n2.z;
+	cl_float3 diff = { n1.value.x - n2.value.x, n1.value.y - n2.value.y, n1.value.z - n2.value.z };
 
-	return sqrt(x*x + y*y + z*z);
+	return sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
 }
 
 float GPGPUImplementation::ValidityMeasure(const std::vector<uchar>& data, const std::vector<Neuron>& neurons) const
@@ -733,11 +726,12 @@ float GPGPUImplementation::ValidityMeasure(const std::vector<uchar>& data, const
 		float min_dist = FLT_MAX;
 		size_t c_idx = -1;
 
-		Neuron crt_pixel =
+		Neuron crt_pixel;
+		crt_pixel.value =
 		{
-			static_cast<unsigned>(data[i]),
-			static_cast<unsigned>(data[i + 1]),
-			static_cast<unsigned>(data[i + 2]) 
+			static_cast<unsigned>(data[i]) / 255.f,
+			static_cast<unsigned>(data[i + 1]) / 255.f,
+			static_cast<unsigned>(data[i + 2]) / 255.f 
 		};
 
 		for (int n_idx = 0; n_idx < neurons.size(); ++n_idx) {
@@ -793,11 +787,12 @@ float GPGPUImplementation::DaviesBouldinIndex(const std::vector<uchar>& data, co
 		float min_dist = FLT_MAX;
 		size_t c_idx = -1;
 
-		Neuron crt_pixel =
+		Neuron crt_pixel;
+		crt_pixel.value =
 		{
-			static_cast<unsigned>(data[i]),
-			static_cast<unsigned>(data[i + 1]),
-			static_cast<unsigned>(data[i + 2])
+			static_cast<cl_float>(static_cast<unsigned>(data[i]) / 255.f),
+			static_cast<cl_float>(static_cast<unsigned>(data[i + 1]) / 255.f),
+			static_cast<cl_float>(static_cast<unsigned>(data[i + 2] / 255.f))
 		};
 
 		for (int n_idx = 0; n_idx < neurons.size(); ++n_idx)
@@ -870,9 +865,7 @@ std::pair<float, float> GPGPUImplementation::ComputeVMAndDBIndices(QImage * img)
 	for (auto n : uq_neuron)
 	{
 		Neuron nv;
-		nv.x = qRed(n) / 256.f;
-		nv.y = qGreen(n) / 256.f;
-		nv.z = qBlue(n) / 256.f;
+		nv.value = { qRed(n) / 256.f, qGreen(n) / 256.f, qBlue(n) / 256.f };
 
 		neurons.push_back(nv);
 	}

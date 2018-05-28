@@ -1,5 +1,8 @@
 
-#include "Structs.h"
+struct Neuron
+{
+	float3 value;
+};
 
 const sampler_t srcSampler = CLK_NORMALIZED_COORDS_FALSE |
 							CLK_ADDRESS_CLAMP_TO_EDGE |
@@ -14,14 +17,14 @@ __kernel void find_bmu(
 )
 {
 	int pos = get_global_id(0);
+	float3 dist;
 
 	if (pos < neuron_count) 
 	{
-		float dist_X = value.x - neurons[pos].x;
-		float dist_Y = value.y - neurons[pos].y;
-		float dist_Z = value.z - neurons[pos].z;
+		dist = value - neurons[pos].value;
+		dist *= dist;
 
-		distances[pos] = sqrt((float)(dist_X * dist_X + dist_Y * dist_Y + dist_Z * dist_Z));
+		distances[pos] = dist.x + dist.y + dist.z;
 	}
 
 	barrier(CLK_GLOBAL_MEM_FENCE);
@@ -45,7 +48,7 @@ __kernel void find_bmu(
 }
 
 __kernel void update_weights(
-	read_only uint3 value,
+	read_only float3 value,
 	__global read_only int * bmu_idx,
 	__global read_write struct Neuron * neurons,
 	int neuron_count,
@@ -63,9 +66,7 @@ __kernel void update_weights(
 		{
 			float influence = exp(-(dist * dist) / (2.f * (neigh_distance * neigh_distance)));
 
-			neurons[pos].x += learning_rate * influence * (int)(value.x - neurons[pos].x);
-			neurons[pos].y += learning_rate * influence * (int)(value.y - neurons[pos].y);
-			neurons[pos].z += learning_rate * influence * (int)(value.z - neurons[pos].z);
+			neurons[pos].value += learning_rate * influence * (value - neurons[pos].value);
 		}
 	}
 }
@@ -81,21 +82,18 @@ __kernel void som_draw(
 	int neuron_idx = -1;
 	const int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
 
-	float4 rgba = read_imagef(input, srcSampler, imgCoords);
-	//printf("%f, %f, %f\n", neurons[0].x / 255.f, neurons[0].y / 255.f, neurons[0].z / 255.f);
+	float3 rgb = read_imagef(input, srcSampler, imgCoords).xyz;
 
 	float d;
-	float dist_X;
-	float dist_Y;
-	float dist_Z;
+	float3 distance;
 
 	for (int i = 0; i < neuron_count; ++i)
 	{
-		dist_X = rgba.x - neurons[i].x;
-		dist_Y = rgba.y - neurons[i].y;
-		dist_Z = rgba.z - neurons[i].z;
+		distance = rgb - neurons[i].value;
 
-		d = sqrt((float)(dist_X * dist_X + dist_Y * dist_Y + dist_Z * dist_Z));
+		distance *= distance;
+
+		d = distance.x  + distance.y  + distance.z;
 
 		if (d < dist)
 		{
@@ -104,5 +102,5 @@ __kernel void som_draw(
 		}
 	}
 
-	write_imagef(output, imgCoords, (float4)(neurons[neuron_idx].x, neurons[neuron_idx].y, neurons[neuron_idx].z, 1.f));
+	write_imagef(output, imgCoords, (float4)(neurons[neuron_idx].value, 1.f));
 }
