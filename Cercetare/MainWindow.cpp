@@ -13,6 +13,7 @@
 #include <functional>
 
 #include "Benchmark.h"
+#include "ConvolutionDialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent), m_scale_factor(1.0)
@@ -141,11 +142,13 @@ void MainWindow::SetActions()
 	connect(m_ui.actionGrayscale, SIGNAL(triggered()), this, SLOT(OnGrayscaleClicked()));
 	connect(m_ui.actionResize, SIGNAL(triggered()), this, SLOT(OnResizeClicked()));
 
-
+	// FIlters
 	connect(m_ui.actionSobel, SIGNAL(triggered()), this, SLOT(OnSobelClicked()));
 	connect(m_ui.actionGaussian_Blur, SIGNAL(triggered()), this, SLOT(OnGaussianBlurClicked()));
 	connect(m_ui.actionColor_Smoothing, SIGNAL(triggered()), this, SLOT(OnColorSmoothingClicked()));
 	connect(m_ui.actionSharpening, SIGNAL(triggered()), this, SLOT(OnSharpeningClicked()));
+	connect(m_ui.actionCustom_Convolution, SIGNAL(triggered()), this, SLOT(OnCustomConvolutionClicked()));
+	
 
 	// Segmentation
 	connect(m_ui.actionK_Means, SIGNAL(triggered()), this, SLOT(OnKMeansClicked()));
@@ -257,6 +260,17 @@ void MainWindow::OnSharpeningClicked()
 void MainWindow::OnColorSmoothingClicked()
 {
 	m_cl.ColorSmoothing(m_img);
+	labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
+}
+
+void MainWindow::OnCustomConvolutionClicked()
+{
+	ConvolutionDialog c_diag;
+	c_diag.exec();
+
+	std::vector<float> kernel_values = c_diag.GetKernel();
+
+	m_cl.CustomFilter(m_img, kernel_values);
 	labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
 }
 

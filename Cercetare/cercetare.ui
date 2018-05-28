@@ -110,6 +110,8 @@
     <addaction name="actionGaussian_Blur"/>
     <addaction name="actionSharpening"/>
     <addaction name="actionColor_Smoothing"/>
+    <addaction name="separator"/>
+    <addaction name="actionCustom_Convolution"/>
    </widget>
    <widget class="QMenu" name="menuSegmentation">
     <property name="title">
@@ -217,6 +219,11 @@
   <action name="actionBenchmark">
    <property name="text">
     <string>Benchmark</string>
+   </property>
+  </action>
+  <action name="actionCustom_Convolution">
+   <property name="text">
+    <string>Custom Convolution</string>
    </property>
   </action>
  </widget>

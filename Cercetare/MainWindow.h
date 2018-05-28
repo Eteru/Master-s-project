@@ -34,6 +34,8 @@ private slots:
 	void OnGaussianBlurClicked();
 	void OnSharpeningClicked();
 	void OnColorSmoothingClicked();
+	void OnCustomConvolutionClicked();
+
 	void OnKMeansClicked();
 	void OnGrayscaleClicked();
 	void OnResizeClicked();

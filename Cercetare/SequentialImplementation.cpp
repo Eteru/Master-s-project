@@ -12,6 +12,10 @@ SequentialImplementation::~SequentialImplementation()
 {
 }
 
+void SequentialImplementation::CustomFilter(QImage & img, const std::vector<float>& kernel_values)
+{
+}
+
 float SequentialImplementation::Grayscale(QImage & img)
 {
 	std::vector<uchar> values;

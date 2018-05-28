@@ -14,6 +14,7 @@ public:
 	void SetLogFunction(std::function<void(std::string)> log_func);
 
 	// filters
+	virtual void CustomFilter(QImage & img, const std::vector<float> & kernel_values) = 0;
 	virtual float Grayscale(QImage & img) = 0;
 	virtual void Sobel(QImage & img) = 0;
 	virtual float GaussianBlur(QImage & img) = 0;

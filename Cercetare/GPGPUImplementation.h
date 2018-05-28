@@ -21,6 +21,8 @@ public:
 	
 	void SetData(QImage & img);
 
+	virtual void CustomFilter(QImage & img, const std::vector<float> & kernel_values);
+
 	virtual float Grayscale(QImage & img);
 	virtual void Resize(QImage & img);
 

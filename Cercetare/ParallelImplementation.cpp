@@ -13,6 +13,10 @@ ParallelImplementation::~ParallelImplementation()
 {
 }
 
+void ParallelImplementation::CustomFilter(QImage & img, const std::vector<float>& kernel_values)
+{
+}
+
 float ParallelImplementation::Grayscale(QImage & img)
 {
 	std::vector<uchar> values;

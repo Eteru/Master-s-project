@@ -104,6 +104,36 @@ void GPGPUImplementation::SetData(QImage & img)
 	m_initialized = true;
 }
 
+void GPGPUImplementation::CustomFilter(QImage & img, const std::vector<float>& kernel_values)
+{
+	cl_int res;
+
+	try
+	{
+		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
+		cl::Buffer convCL = cl::Buffer(m_contextCL, CL_MEM_READ_ONLY, kernel_values.size() * sizeof(float), 0, 0);
+		m_queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, kernel_values.size() * sizeof(float), &kernel_values[0], 0, NULL);
+
+		// Set arguments to kernel
+		res = kernel.setArg(0, *m_data_original);
+		res = kernel.setArg(1, *m_data_front);
+		res = kernel.setArg(2, convCL);
+		
+		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_globalRange, cl::NullRange);
+
+		res = m_queue.enqueueReadImage(*m_data_front, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
+
+		m_queue.finish();
+
+		CopyBufferToImage(m_values, img);
+	}
+	catch (const cl::Error & err)
+	{
+		std::cerr << "CustomFilter: " << err.what() << " with error: " << err.err() << std::endl;
+	}
+
+}
+
 float GPGPUImplementation::Grayscale(QImage & img)
 {
 	float ret = 0.f;

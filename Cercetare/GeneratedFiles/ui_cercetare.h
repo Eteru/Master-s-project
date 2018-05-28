@@ -44,6 +44,7 @@ public:
     QAction *actionResize;
     QAction *actionSIFT;
     QAction *actionBenchmark;
+    QAction *actionCustom_Convolution;
     QWidget *centralWidget;
     QVBoxLayout *verticalLayout;
     QHBoxLayout *horizontalLayout_2;
@@ -96,6 +97,8 @@ public:
         actionSIFT->setObjectName(QStringLiteral("actionSIFT"));
         actionBenchmark = new QAction(CercetareClass);
         actionBenchmark->setObjectName(QStringLiteral("actionBenchmark"));
+        actionCustom_Convolution = new QAction(CercetareClass);
+        actionCustom_Convolution->setObjectName(QStringLiteral("actionCustom_Convolution"));
         centralWidget = new QWidget(CercetareClass);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         verticalLayout = new QVBoxLayout(centralWidget);
@@ -186,6 +189,8 @@ public:
         menuFilters->addAction(actionGaussian_Blur);
         menuFilters->addAction(actionSharpening);
         menuFilters->addAction(actionColor_Smoothing);
+        menuFilters->addSeparator();
+        menuFilters->addAction(actionCustom_Convolution);
         menuSegmentation->addAction(actionK_Means);
         menuSegmentation->addAction(actionThreshold);
         menuSegmentation->addAction(actionSOM);
@@ -215,6 +220,7 @@ public:
         actionResize->setText(QApplication::translate("CercetareClass", "Resize", Q_NULLPTR));
         actionSIFT->setText(QApplication::translate("CercetareClass", "SIFT", Q_NULLPTR));
         actionBenchmark->setText(QApplication::translate("CercetareClass", "Benchmark", Q_NULLPTR));
+        actionCustom_Convolution->setText(QApplication::translate("CercetareClass", "Custom Convolution", Q_NULLPTR));
         pushButtonSwitchView->setText(QApplication::translate("CercetareClass", "Switch View", Q_NULLPTR));
         pushButtonZoomIn->setText(QApplication::translate("CercetareClass", "Zoom In", Q_NULLPTR));
         pushButtonZoomOut->setText(QApplication::translate("CercetareClass", "Zoom Out", Q_NULLPTR));

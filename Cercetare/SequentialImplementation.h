@@ -8,6 +8,7 @@ public:
 	virtual ~SequentialImplementation();
 
 	// filters
+	virtual void CustomFilter(QImage & img, const std::vector<float> & kernel_values);
 	virtual float Grayscale(QImage & img);
 	virtual void Sobel(QImage & img);
 	virtual float GaussianBlur(QImage & img);
