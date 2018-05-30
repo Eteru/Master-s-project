@@ -49,20 +49,25 @@ void Implementation::CopyBufferToImage(std::vector<uchar>& values, QImage & img,
 void Implementation::GenerateCentroids(const uint32_t count, std::vector<Centroid> & centroids)
 {
 	centroids.resize(count);
+
+	std::cout << "Generated centroids: ";
 	for (Centroid & centroid : centroids)
 	{
 		centroid = {};
 
-		centroid.value.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		centroid.value.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		centroid.value.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-
-		centroid.sum.x = 0;
-		centroid.sum.y = 0;
-		centroid.sum.z = 0;
-
+		centroid.value_x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		centroid.value_y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		centroid.value_z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		
 		centroid.count = 0;
 	}
+
+	for (Centroid & centroid : centroids)
+	{
+		std::cout << " (" << centroid.value_x << ", " << centroid.value_y << ", " << centroid.value_z << "), count = " << centroid.count;
+	}
+
+	std::cout << std::endl;
 }
 
 void Implementation::GenerateNeurons(const uint32_t count, std::vector<Neuron>& neurons)
@@ -74,19 +79,19 @@ void Implementation::GenerateNeurons(const uint32_t count, std::vector<Neuron>& 
 	{
 		neuron = {};
 
-		neuron.value.x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		neuron.value.y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		neuron.value.z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		neuron.value_x = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		neuron.value_y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		neuron.value_z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-		std::cout << " (" << neuron.value.x << ", " << neuron.value.y << ", " << neuron.value.z << ")";
+		std::cout << " (" << neuron.value_x << ", " << neuron.value_y << ", " << neuron.value_z << ")";
 	}
 
 	std::cout << std::endl;
 }
 
-float Implementation::Distance(const Centroid & c, uint x, uint y, uint z) const
+float Implementation::Distance(const Centroid & c, float x, float y, float z) const
 {
-	return c.value.x * c.value.x + x * x - 2 * c.value.x * x +
-		c.value.y * c.value.y + y * y - 2 * c.value.y * y +
-		c.value.z * c.value.z + z * z - 2 * c.value.z * z;
+	return c.value_x * c.value_x + x * x - 2 * c.value_x * x +
+		c.value_y * c.value_y + y * y - 2 * c.value_y * y +
+		c.value_z * c.value_z + z * z - 2 * c.value_z * z;
 }

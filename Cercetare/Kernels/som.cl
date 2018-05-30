@@ -1,8 +1,5 @@
 
-struct Neuron
-{
-	float3 value;
-};
+#include "Structs.h"
 
 const sampler_t srcSampler = CLK_NORMALIZED_COORDS_FALSE |
 							CLK_ADDRESS_CLAMP_TO_EDGE |
@@ -21,7 +18,7 @@ __kernel void find_bmu(
 
 	if (pos < neuron_count) 
 	{
-		dist = value - neurons[pos].value;
+		dist = value - (float3)(neurons[pos].value_x, neurons[pos].value_y, neurons[pos].value_z);
 		dist *= dist;
 
 		distances[pos] = dist.x + dist.y + dist.z;
@@ -66,7 +63,9 @@ __kernel void update_weights(
 		{
 			float influence = exp(-(dist * dist) / (2.f * (neigh_distance * neigh_distance)));
 
-			neurons[pos].value += learning_rate * influence * (value - neurons[pos].value);
+			neurons[pos].value_x += learning_rate * influence * (value.x - neurons[pos].value_x);
+			neurons[pos].value_y += learning_rate * influence * (value.y - neurons[pos].value_y);
+			neurons[pos].value_z += learning_rate * influence * (value.z - neurons[pos].value_z);
 		}
 	}
 }
@@ -89,7 +88,7 @@ __kernel void som_draw(
 
 	for (int i = 0; i < neuron_count; ++i)
 	{
-		distance = rgb - neurons[i].value;
+		distance = rgb - (float3)(neurons[i].value_x, neurons[i].value_y, neurons[i].value_z);
 
 		distance *= distance;
 
@@ -102,5 +101,5 @@ __kernel void som_draw(
 		}
 	}
 
-	write_imagef(output, imgCoords, (float4)(neurons[neuron_idx].value, 1.f));
+	write_imagef(output, imgCoords, (float4)(neurons[neuron_idx].value_x, neurons[neuron_idx].value_y, neurons[neuron_idx].value_z, 1.f));
 }

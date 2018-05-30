@@ -151,9 +151,9 @@ float ParallelImplementation::KMeans(QImage & img, const int centroid_count)
 
 			#pragma omp critical
 			{
-				centroids[centroid_idx].sum.x += static_cast<unsigned>(values[i]);
-				centroids[centroid_idx].sum.y += static_cast<unsigned>(values[i + 1]);
-				centroids[centroid_idx].sum.z += static_cast<unsigned>(values[i + 2]);
+				centroids[centroid_idx].sum_x += values[i];
+				centroids[centroid_idx].sum_y += values[i + 1];
+				centroids[centroid_idx].sum_z += values[i + 2];
 				++centroids[centroid_idx].count;
 			}
 		}
@@ -165,14 +165,14 @@ float ParallelImplementation::KMeans(QImage & img, const int centroid_count)
 		{
 			if (0 != centroids[c].count)
 			{
-				centroids[c].value.x = centroids[c].sum.x / centroids[c].count;
-				centroids[c].value.y = centroids[c].sum.y / centroids[c].count;
-				centroids[c].value.z = centroids[c].sum.z / centroids[c].count;
+				centroids[c].value_x = centroids[c].sum_x / centroids[c].count;
+				centroids[c].value_y = centroids[c].sum_y / centroids[c].count;
+				centroids[c].value_z = centroids[c].sum_z / centroids[c].count;
 			}
 
-			centroids[c].sum.x = 0;
-			centroids[c].sum.y = 0;
-			centroids[c].sum.z = 0;
+			centroids[c].sum_x = 0;
+			centroids[c].sum_y = 0;
+			centroids[c].sum_z = 0;
 			centroids[c].count = 0;
 		}
 
@@ -197,16 +197,16 @@ float ParallelImplementation::KMeans(QImage & img, const int centroid_count)
 			}
 		}
 
-		values[i] = centroids[centroid_idx].value.x;
-		values[i + 1] = centroids[centroid_idx].value.y;
-		values[i + 2] = centroids[centroid_idx].value.z;
+		values[i] = centroids[centroid_idx].value_x;
+		values[i + 1] = centroids[centroid_idx].value_y;
+		values[i + 2] = centroids[centroid_idx].value_z;
 	}
 
 	auto end = std::chrono::system_clock::now();
 
 	for (size_t i = 0; i < values_ui.size(); ++i)
 	{
-		values_ui[i] = static_cast<unsigned>(values_ui[i] * 255);
+		values_ui[i] = static_cast<unsigned>(values[i] * 255.f);
 	}
 
 	CopyBufferToImage(values_ui, img);
@@ -246,9 +246,9 @@ float ParallelImplementation::SOMSegmentation(QImage & img, QImage * ground_trut
 
 			for (int c = 0; c < neurons.size(); ++c)
 			{
-				uint dist_X = values[index] - neurons[c].value.x;
-				uint dist_Y = values[index + 1] - neurons[c].value.y;
-				uint dist_Z = values[index + 2] - neurons[c].value.z;
+				float dist_X = values[index] - neurons[c].value_x;
+				float dist_Y = values[index + 1] - neurons[c].value_y;
+				float dist_Z = values[index + 2] - neurons[c].value_z;
 
 				float d = sqrt((float)(dist_X * dist_X + dist_Y * dist_Y + dist_Z * dist_Z));
 
@@ -276,9 +276,9 @@ float ParallelImplementation::SOMSegmentation(QImage & img, QImage * ground_trut
 
 				float influence = exp(-(n_dist * n_dist) / (2.f * (neigh_dist * neigh_dist)));
 
-				neurons[c].value.x += learning_rate * influence * (int)(values[index] - neurons[c].value.x);
-				neurons[c].value.y += learning_rate * influence * (int)(values[index + 1] - neurons[c].value.y);
-				neurons[c].value.z += learning_rate * influence * (int)(values[index + 2] - neurons[c].value.z);
+				neurons[c].value_x += learning_rate * influence * (int)(values[index] - neurons[c].value_x);
+				neurons[c].value_y += learning_rate * influence * (int)(values[index + 1] - neurons[c].value_y);
+				neurons[c].value_z += learning_rate * influence * (int)(values[index + 2] - neurons[c].value_z);
 			}
 		}
 	}
@@ -291,9 +291,9 @@ float ParallelImplementation::SOMSegmentation(QImage & img, QImage * ground_trut
 
 		for (size_t c = 0; c < neurons.size(); ++c)
 		{
-			uint dist_X = values[index] - neurons[c].value.x;
-			uint dist_Y = values[index + 1] - neurons[c].value.y;
-			uint dist_Z = values[index + 2] - neurons[c].value.z;
+			float dist_X = values[index] - neurons[c].value_x;
+			float dist_Y = values[index + 1] - neurons[c].value_y;
+			float dist_Z = values[index + 2] - neurons[c].value_z;
 
 			float d = sqrt((float)(dist_X * dist_X + dist_Y * dist_Y + dist_Z * dist_Z));
 
@@ -305,9 +305,9 @@ float ParallelImplementation::SOMSegmentation(QImage & img, QImage * ground_trut
 			}
 		}
 
-		values[index] = neurons[bmu].value.x;
-		values[index + 1] = neurons[bmu].value.y;
-		values[index + 2] = neurons[bmu].value.z;
+		values[index] = neurons[bmu].value_x;
+		values[index + 1] = neurons[bmu].value_y;
+		values[index + 2] = neurons[bmu].value_z;
 	}
 
 	auto end = std::chrono::system_clock::now();

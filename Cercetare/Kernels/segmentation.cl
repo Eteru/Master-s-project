@@ -1,11 +1,5 @@
 
-//#include "Structs.h"
-struct Centroid
-{
-	float3 value;
-	float3 sum;
-	int count;
-};
+#include "Structs.h"
 
 const sampler_t srcSampler = CLK_NORMALIZED_COORDS_FALSE |
 							CLK_ADDRESS_CLAMP_TO_EDGE |
@@ -14,6 +8,9 @@ const sampler_t srcSampler = CLK_NORMALIZED_COORDS_FALSE |
 __kernel void kmeans(
 	read_only image2d_t input,
 	__global read_write struct Centroid * centroids,
+	__global write_only float3 *buckets,
+	int width,
+	int height,
 	int centroids_no
 )
 {
@@ -27,7 +24,7 @@ __kernel void kmeans(
 
 	for (int i = 0; i < centroids_no; ++i) 
 	{
-		delta = centroids[i].value - rgb;
+		delta = (float3)(centroids[i].value_x, centroids[i].value_y, centroids[i].value_z) - rgb;
 		delta *= delta;
 		d = delta.x + delta.y + delta.z;
 
@@ -38,41 +35,17 @@ __kernel void kmeans(
 		}
 	}
 
-	// TEST -------------
-	//uint lid = get_local_id(0);
-	//uint binId = get_group_id(0);
-	//
-	//uint group_offset = binId * bin_size;
-	//uint maxval = 0;
-	//
-	//int prefix_sum_val = work_group_scan_inclusive_add(rgb.x);
-	//barrier(CLK_GLOBAL_MEM_FENCE);
-	//
-	//int prefix_sum_val = work_group_scan_inclusive_add(rgb.y);
-	//barrier(CLK_GLOBAL_MEM_FENCE);
-	//
-	//int prefix_sum_val = work_group_scan_inclusive_add(rgb.z);
-	//barrier(CLK_GLOBAL_MEM_FENCE);
-	//
-	//// todo: sum of all workgroups
-	//
-	//
-	//// ------------------
-	//
-	//centroids[centroid_idx].sum_x += rgb.x;
-	//centroids[centroid_idx].sum_y += rgb.y;
-	//centroids[centroid_idx].sum_z += rgb.z;
-	//centroids[centroid_idx].count++;
-	//atomic_add(&centroids[centroid_idx].sum_x, rgb.x);
-	//atomic_add(&centroids[centroid_idx].sum_y, rgb.y);
-	//atomic_add(&centroids[centroid_idx].sum_z, rgb.z);
-	//atomic_inc(&centroids[centroid_idx].count);
+	//printf("centroid=%d, count=%d\n", centroid_idx, centroids[centroid_idx].count);
+
+	uint idx = atomic_inc(&centroids[centroid_idx].count);
+	//printf("[%d]: centroid=%d, count=%d\n", idx, centroid_idx, centroids[centroid_idx].count);
+	buckets[centroid_idx * width * height + idx] = rgb;
 }
 
 __kernel void kmeans_draw(
 	read_only image2d_t input,
 	write_only image2d_t output,
-	__global read_write struct Centroid * centroids,
+	__constant struct Centroid * centroids,
 	int centroids_no
 )
 {
@@ -86,7 +59,7 @@ __kernel void kmeans_draw(
 
 	for (int i = 0; i < centroids_no; ++i) 
 	{
-		delta = centroids[i].value - rgb;
+		delta = (float3)(centroids[i].value_x, centroids[i].value_y, centroids[i].value_z) - rgb;
 		delta *= delta;
 		d = delta.x + delta.y + delta.z;
 
@@ -97,23 +70,42 @@ __kernel void kmeans_draw(
 		}
 	}
 
-	write_imagef(output, imgCoords, (float4)(centroids[centroid_idx].value, 1.f));
+	write_imagef(output, imgCoords, (float4)(centroids[centroid_idx].value_x, centroids[centroid_idx].value_y, centroids[centroid_idx].value_z, 1.f));
 }
 
 __kernel void update_centroids(
 	__global read_write struct Centroid * centroids,
+	__global read_only float3 *buckets,
+	int width,
+	int height,
 	int centroids_no
 )
 {
 	int pos = get_global_id(0);
+	unsigned long offset = pos * width * height;
 
-	if (pos < centroids_no && centroids[pos].count > 0) 
+	if (centroids[pos].count == 0)
 	{
-		centroids[pos].value = centroids[pos].sum / centroids[pos].count;
-
-		centroids[pos].sum = (float3)(0.f, 0.f, 0.f);
-		centroids[pos].count = 0;
+		return;
 	}
+	
+	centroids[pos].value_x = 0;
+	centroids[pos].value_y = 0;
+	centroids[pos].value_z = 0;
+
+	for (int i = 0; i < centroids[pos].count; ++i)
+	{
+		centroids[pos].value_x += buckets[offset + i].x;
+		centroids[pos].value_y += buckets[offset + i].y;
+		centroids[pos].value_z += buckets[offset + i].z;
+	}
+	
+	centroids[pos].value_x /= centroids[pos].count;
+	centroids[pos].value_y /= centroids[pos].count;
+	centroids[pos].value_z /= centroids[pos].count;
+	
+	//printf("\nSetting centroid[%d] count to 0\n\n", pos);
+	centroids[pos].count = 0;
 }
 
 __kernel void threshold(

@@ -37,6 +37,6 @@ protected:
 	void GenerateCentroids(const uint32_t count, std::vector<Centroid> & centroids);
 	void GenerateNeurons(const uint32_t count, std::vector<Neuron> & neurons);
 
-	float Distance(const Centroid & c, uint x, uint y, uint z) const;
+	float Distance(const Centroid & c, float x, float y, float z) const;
 };
 

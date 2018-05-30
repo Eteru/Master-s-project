@@ -1,17 +1,22 @@
 #pragma once
 
-#include <CL\cl.h>
 
 struct Centroid
 {
-	cl_float3 value;
-	cl_float3 sum;
-	int count;
+	float value_x;
+	float value_y;
+	float value_z;
+	float sum_x;
+	float sum_y;
+	float sum_z;
+	unsigned count;
 };
 
 struct Neuron
 {
-	cl_float3 value;
+	float value_x;
+	float value_y;
+	float value_z;
 };
 
 struct KeyPoint

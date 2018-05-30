@@ -395,21 +395,29 @@ float GPGPUImplementation::KMeans(QImage & img, const int centroid_count)
 
 	try
 	{
+		cl_float3 pattern = { 0.f,0.f,0.f };
 		cl::Kernel & kmeans = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_KMEANS);
 		cl::Kernel & kmeans_draw = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_KMEANS_DRAW);
 		cl::Kernel & kmeans_update_centroids = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_KMEANS_UPDATE_CENTROIDS);
 
-		cl::Buffer centroidsCL = cl::Buffer(m_contextCL, CL_MEM_READ_WRITE, centroids.size() * sizeof(Centroid), 0, 0);
-		res = m_queue.enqueueWriteBuffer(centroidsCL, CL_TRUE, 0, centroids.size() * sizeof(Centroid), &centroids[0], 0, NULL);
-
+		cl::Buffer centroidsCL = cl::Buffer(m_contextCL, CL_MEM_READ_WRITE, centroid_count * sizeof(Centroid), 0, 0);
+		cl::Buffer bucketsCL = cl::Buffer(m_contextCL, CL_MEM_READ_WRITE, centroid_count * m_width * m_height * sizeof(cl_float3), 0, 0);
+		res = m_queue.enqueueWriteBuffer(centroidsCL, CL_TRUE, 0, centroid_count * sizeof(Centroid), &centroids[0], 0, NULL);
+		
 		// Set arguments to kmeans kernel
 		res = kmeans.setArg(0, *m_data_original);
 		res = kmeans.setArg(1, centroidsCL);
-		res = kmeans.setArg(2, centroid_count);
+		res = kmeans.setArg(2, bucketsCL);
+		res = kmeans.setArg(3, m_width);
+		res = kmeans.setArg(4, m_height);
+		res = kmeans.setArg(5, centroid_count);
 
 		// Set arguments to update centroids kernel
 		res = kmeans_update_centroids.setArg(0, centroidsCL);
-		res = kmeans_update_centroids.setArg(1, centroid_count);
+		res = kmeans_update_centroids.setArg(1, bucketsCL);
+		res = kmeans_update_centroids.setArg(2, m_width);
+		res = kmeans_update_centroids.setArg(3, m_height);
+		res = kmeans_update_centroids.setArg(4, centroid_count);
 
 		cl::Event event;
 
@@ -683,7 +691,7 @@ std::pair<float, float> GPGPUImplementation::CheckSegmentationNeurons(cl::Buffer
 		std::cout << "Final neurons: ";
 		for (Neuron & neuron : neurons)
 		{
-			std::cout << " (" << neuron.value.x << ", " << neuron.value.y << ", " << neuron.value.z << ")";
+			std::cout << " (" << neuron.value_x << ", " << neuron.value_y << ", " << neuron.value_z << ")";
 		}
 		std::cout << std::endl;
 
@@ -711,7 +719,7 @@ float GPGPUImplementation::GaussianFunction(int niu, int thetha, int cluster_cou
 
 float GPGPUImplementation::NormalizedEuclideanDistance(const Neuron & n1, const Neuron & n2) const
 {
-	cl_float3 diff = { n1.value.x - n2.value.x, n1.value.y - n2.value.y, n1.value.z - n2.value.z };
+	cl_float3 diff = { n1.value_x - n2.value_x, n1.value_y - n2.value_y, n1.value_z - n2.value_z };
 
 	return sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
 }
@@ -726,13 +734,12 @@ float GPGPUImplementation::ValidityMeasure(const std::vector<uchar>& data, const
 		float min_dist = FLT_MAX;
 		size_t c_idx = -1;
 
-		Neuron crt_pixel;
-		crt_pixel.value =
-		{
+		Neuron crt_pixel = {
 			static_cast<unsigned>(data[i]) / 255.f,
 			static_cast<unsigned>(data[i + 1]) / 255.f,
-			static_cast<unsigned>(data[i + 2]) / 255.f 
+			static_cast<unsigned>(data[i + 2]) / 255.f
 		};
+		
 
 		for (int n_idx = 0; n_idx < neurons.size(); ++n_idx) {
 			
@@ -787,13 +794,12 @@ float GPGPUImplementation::DaviesBouldinIndex(const std::vector<uchar>& data, co
 		float min_dist = FLT_MAX;
 		size_t c_idx = -1;
 
-		Neuron crt_pixel;
-		crt_pixel.value =
-		{
+		Neuron crt_pixel = {
 			static_cast<cl_float>(static_cast<unsigned>(data[i]) / 255.f),
 			static_cast<cl_float>(static_cast<unsigned>(data[i + 1]) / 255.f),
 			static_cast<cl_float>(static_cast<unsigned>(data[i + 2] / 255.f))
 		};
+		
 
 		for (int n_idx = 0; n_idx < neurons.size(); ++n_idx)
 		{
@@ -864,8 +870,7 @@ std::pair<float, float> GPGPUImplementation::ComputeVMAndDBIndices(QImage * img)
 	std::vector<Neuron> neurons;
 	for (auto n : uq_neuron)
 	{
-		Neuron nv;
-		nv.value = { qRed(n) / 256.f, qGreen(n) / 256.f, qBlue(n) / 256.f };
+		Neuron nv = { qRed(n) / 256.f, qGreen(n) / 256.f, qBlue(n) / 256.f };
 
 		neurons.push_back(nv);
 	}
