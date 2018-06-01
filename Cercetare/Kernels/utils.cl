@@ -382,8 +382,8 @@ __kernel void extract_feature_points(
 	read_only image2d_t magnitude,
 	read_only image2d_t orientation,
 	global read_only float* weights,
-	global write_only struct KeyPoint* kps,
-	global read_write double* feature_vector,
+	global read_only struct KeyPoint* kps,
+	global read_write struct FeaturePoint* feature_vector,
 	const unsigned int width,
 	const unsigned int height)
 {
@@ -400,12 +400,15 @@ __kernel void extract_feature_points(
 	int x = kp.x;
 	int y = kp.y;
 
+	feature_vector[pos].x = kp.x_interp;
+	feature_vector[pos].y = kp.y_interp;
+
 	double histogram[DESC_NUM_BINS];
 
 	uint w_index = 0;
 	uint fv_index = 0;
 
-	//printf("[%d]: %d, %d, magn=%f, ori=%f, start=%d, end=%d\n", pos, x, y, kp.magnitude, kp.orientation, x - HALF_WINDOW_SIZE, x + HALF_WINDOW_SIZE);
+	//printf("[%d]: (%f, %f), magn=%f, ori=%f, start=%d, end=%d\n", pos, feature_vector[pos].x, feature_vector[pos].y, kp.magnitude, kp.orientation, x - HALF_WINDOW_SIZE, x + HALF_WINDOW_SIZE);
 	for (int wx = x - HALF_WINDOW_SIZE; wx < x + HALF_WINDOW_SIZE; wx += SMALL_WINDOW_SIZE)
 	{
 
@@ -450,7 +453,7 @@ __kernel void extract_feature_points(
 
 			for (int i = 0; i < DESC_NUM_BINS; ++i)
 			{
-				feature_vector[fv_start_index + fv_index] = histogram[i];
+				feature_vector[pos].orientations[fv_index] = histogram[i];
 
 				histogram[i] = 0.0;
 
@@ -463,8 +466,8 @@ __kernel void extract_feature_points(
 	double norm = 0.f;
 	for (int i = 0; i < FV_SIZE; ++i)
 	{
-		norm += pow(feature_vector[fv_start_index + i], 2);
-		//printf("[%d]: %lf, norm=%lf\n", fv_start_index + i, feature_vector[fv_start_index + i], norm);
+		norm += pow(feature_vector[pos].orientations[i], 2);
+		//printf("[%d]: %lf, norm=%lf\n", fv_start_index + i, feature_vector.orientations[fv_start_index + i], norm);
 	}
 
 	norm = rsqrt(norm);
@@ -472,15 +475,15 @@ __kernel void extract_feature_points(
 	float norm_s = 0.f;
 	for (int i = 0; i < FV_SIZE; ++i)
 	{
-		feature_vector[fv_start_index + i] *= norm;
-		//printf("%f ", feature_vector[fv_start_index + i]);
+		feature_vector[pos].orientations[i] *= norm;
+		//printf("%f ", feature_vector.orientations[fv_start_index + i]);
 
-		if (feature_vector[fv_start_index + i] > FV_THRESHOLD)
+		if (feature_vector[pos].orientations[i] > FV_THRESHOLD)
 		{
-			feature_vector[fv_start_index + i] = FV_THRESHOLD;
+			feature_vector[pos].orientations[i] = FV_THRESHOLD;
 		}
 
-		norm_s += pow(feature_vector[fv_start_index + i], 2);
+		norm_s += pow(feature_vector[pos].orientations[i], 2);
 	}
 
 	//printf("[%d]: norm=%f, rsqsrt(norm)=%f\n", pos, norm_s, rsqrt(norm_s));
@@ -489,6 +492,6 @@ __kernel void extract_feature_points(
 
 	for (int i = 0; i < FV_SIZE; ++i)
 	{
-		feature_vector[fv_start_index + i] *= norm;
+		feature_vector[pos].orientations[i] *= norm;
 	}
 }

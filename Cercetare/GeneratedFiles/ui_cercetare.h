@@ -45,6 +45,7 @@ public:
     QAction *actionSIFT;
     QAction *actionBenchmark;
     QAction *actionCustom_Convolution;
+    QAction *actionFind_Image;
     QWidget *centralWidget;
     QVBoxLayout *verticalLayout;
     QHBoxLayout *horizontalLayout_2;
@@ -99,6 +100,8 @@ public:
         actionBenchmark->setObjectName(QStringLiteral("actionBenchmark"));
         actionCustom_Convolution = new QAction(CercetareClass);
         actionCustom_Convolution->setObjectName(QStringLiteral("actionCustom_Convolution"));
+        actionFind_Image = new QAction(CercetareClass);
+        actionFind_Image->setObjectName(QStringLiteral("actionFind_Image"));
         centralWidget = new QWidget(CercetareClass);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         verticalLayout = new QVBoxLayout(centralWidget);
@@ -197,6 +200,7 @@ public:
         menuEdit->addAction(actionGrayscale);
         menuEdit->addAction(actionResize);
         menuDescriptors->addAction(actionSIFT);
+        menuDescriptors->addAction(actionFind_Image);
         menuHelp->addAction(actionBenchmark);
 
         retranslateUi(CercetareClass);
@@ -221,6 +225,7 @@ public:
         actionSIFT->setText(QApplication::translate("CercetareClass", "SIFT", Q_NULLPTR));
         actionBenchmark->setText(QApplication::translate("CercetareClass", "Benchmark", Q_NULLPTR));
         actionCustom_Convolution->setText(QApplication::translate("CercetareClass", "Custom Convolution", Q_NULLPTR));
+        actionFind_Image->setText(QApplication::translate("CercetareClass", "Find Image", Q_NULLPTR));
         pushButtonSwitchView->setText(QApplication::translate("CercetareClass", "Switch View", Q_NULLPTR));
         pushButtonZoomIn->setText(QApplication::translate("CercetareClass", "Zoom In", Q_NULLPTR));
         pushButtonZoomOut->setText(QApplication::translate("CercetareClass", "Zoom Out", Q_NULLPTR));

@@ -307,9 +307,9 @@ void Octave::ComputeLocalMaxima()
 	}
 }
 
-std::vector<double> Octave::ComputeOrientation()
+std::vector<FeaturePoint> Octave::ComputeOrientation()
 {
-	std::vector<double> fvps;
+	std::vector<FeaturePoint> fvps;
 	try
 	{
 		unsigned kps_size = m_width * m_height;
@@ -401,8 +401,8 @@ std::vector<double> Octave::ComputeOrientation()
 				continue;
 			}
 
-			std::vector<double> fv(fv_count * WEIGHT_KERNEL_SIZE * WEIGHT_KERNEL_SIZE);
-			cl::Buffer fvCL = cl::Buffer(m_context, CL_MEM_READ_WRITE, fv.size() * sizeof(double), 0, 0);
+			std::vector<FeaturePoint> fv(fv_count);
+			cl::Buffer fvCL = cl::Buffer(m_context, CL_MEM_READ_WRITE, fv_count * sizeof(FeaturePoint), 0, 0);
 
 			res = kernel_extract_feature_points.setArg(0, *m_magnitudes[i - 1]);
 			res = kernel_extract_feature_points.setArg(1, *m_orientations[i - 1]);
@@ -415,7 +415,7 @@ std::vector<double> Octave::ComputeOrientation()
 			res = m_queue.enqueueNDRangeKernel(kernel_extract_feature_points, cl::NullRange, cl::NDRange(fv_count, 1), cl::NullRange);
 			m_queue.finish();
 
-			m_queue.enqueueReadBuffer(fvCL, CL_TRUE, 0, fv.size() * sizeof(double), &fv[0], 0, NULL);
+			m_queue.enqueueReadBuffer(fvCL, CL_TRUE, 0, fv_count * sizeof(FeaturePoint), &fv[0], 0, NULL);
 			m_queue.finish();
 
 

@@ -36,6 +36,7 @@ public:
 	virtual void Threshold(QImage & img, const float value);
 
 	virtual void RunSIFT(QImage & img);
+	virtual std::vector<float> FindImageSIFT(QImage & img, QImage & img_to_find);
 
 private:
 	bool m_initialized;

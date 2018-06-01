@@ -324,3 +324,8 @@ void ParallelImplementation::Threshold(QImage & img, const float value)
 void ParallelImplementation::RunSIFT(QImage & img)
 {
 }
+
+std::vector<float> ParallelImplementation::FindImageSIFT(QImage & img, QImage & img_to_find)
+{
+	return{};
+}

@@ -325,3 +325,8 @@ void SequentialImplementation::Threshold(QImage & img, const float value)
 void SequentialImplementation::RunSIFT(QImage & img)
 {
 }
+
+std::vector<float> SequentialImplementation::FindImageSIFT(QImage & img, QImage & img_to_find)
+{
+	return{};
+}

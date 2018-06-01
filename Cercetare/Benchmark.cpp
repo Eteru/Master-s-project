@@ -49,17 +49,23 @@ std::string Benchmark::RunTests(GPGPUImplementation & gpgpu, QImage & img)
 	{
 		QImage crt_img;
 		bool b = crt_img.load(QString::fromStdString("D:\\workspace\\git\\Master-s-project\\dataset\\" + images[i]));
+		std::cout << "Loaded image: " << b << std::endl;
 
 		gpgpu.SetData(crt_img);
 
 		for (size_t target = 0; target < targets; ++target)
 		{
+			if (target == targets - 1)
+			{
+				gpgpu.SetData(crt_img.copy());
+			}
+
 			for (size_t iter = 0; iter < iterations_no; ++iter)
 			{
-				grayscale[target][i] += impls[target]->Grayscale(crt_img.copy());
-				gaussian[target][i] += impls[target]->GaussianBlur(crt_img.copy());
-				kmeans[target][i] += impls[target]->KMeans(img.copy(), 3);
-				som[target][i] += impls[target]->SOMSegmentation(img.copy());
+				//grayscale[target][i] += impls[target]->Grayscale(crt_img.copy());
+				//gaussian[target][i] += impls[target]->GaussianBlur(crt_img.copy());
+				kmeans[target][i] += impls[target]->KMeans(crt_img.copy(), 3);
+				//som[target][i] += impls[target]->SOMSegmentation(crt_img.copy());
 			}
 
 			grayscale[target][i] /= (iterations_no * 1000000.f);

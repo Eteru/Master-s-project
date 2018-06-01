@@ -133,6 +133,7 @@
      <string>Descriptors</string>
     </property>
     <addaction name="actionSIFT"/>
+    <addaction name="actionFind_Image"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -224,6 +225,11 @@
   <action name="actionCustom_Convolution">
    <property name="text">
     <string>Custom Convolution</string>
+   </property>
+  </action>
+  <action name="actionFind_Image">
+   <property name="text">
+    <string>Find Image</string>
    </property>
   </action>
  </widget>

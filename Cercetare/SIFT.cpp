@@ -6,6 +6,10 @@
 #include <algorithm>
 #include <iterator>
 #include <QImage>
+#include <vector>
+
+uint32_t SIFT::m_current_img = 0;
+
 
 SIFT::SIFT()
 {
@@ -17,7 +21,6 @@ SIFT::~SIFT()
 
 cl::Image2D * SIFT::Run(cl::Image2D * image, uint32_t w, uint32_t h)
 {
-	static int crt_img = 0;
 	std::vector<Octave> m_octaves;
 
 	m_fvps[image] = {};
@@ -51,6 +54,58 @@ cl::Image2D * SIFT::Run(cl::Image2D * image, uint32_t w, uint32_t h)
 	}
 
 	return m_octaves[1].GetImage(0);
+}
+
+std::vector<float> SIFT::FindImage(cl::Image2D * image, uint32_t w, uint32_t h, cl::Image2D * image_to_find, uint32_t w_m, uint32_t h_m)
+{
+	const double DISTANCE_THRESHOLD = 0.6;
+
+	if (m_fvps.find(image) == m_fvps.end())
+	{
+		Run(image, w, h);
+	}
+
+	if (m_fvps.find(image_to_find) == m_fvps.end())
+	{
+		Run(image_to_find, w_m, h_m);
+	}
+	
+	auto features = m_fvps[image];
+	auto features_to_find = m_fvps[image_to_find];
+
+	//std::vector<FeaturePoint> fp;
+	// min_x, max_x, min_y, max_y
+	std::vector<float> rect = { static_cast<float>(w), 0.f, static_cast<float>(h), 0.f };
+
+	for (auto ftf : features_to_find)
+	{
+		for (auto feature : features)
+		{
+			double euc = 0.0;
+			for (int i = 0; i < MAX_ORIS && euc < 1.0; ++i)
+			{
+				euc += (ftf.orientations[i] - feature.orientations[i]) * (ftf.orientations[i] - feature.orientations[i]);
+			}
+
+			//euc = sqrt(euc);
+
+			//if (euc < 1.0)
+			//	std::cout << "Distance: " << euc << std::endl;
+
+			if (euc < DISTANCE_THRESHOLD * DISTANCE_THRESHOLD)
+			{
+				//fp.push_back(feature);
+
+				rect[0] = std::min(rect[0], feature.x);
+				rect[1] = std::max(rect[1], feature.x);
+
+				rect[2] = std::min(rect[2], feature.y);
+				rect[3] = std::max(rect[3], feature.y);
+			}
+		}
+	}
+
+	return rect;
 }
 
 cl::Image2D *  SIFT::SetupReferenceImage(cl::Image2D * image, uint32_t w, uint32_t h)
@@ -191,7 +246,6 @@ void SIFT::WriteOctaveImagesOnDisk(Octave & o, uint32_t o_idx) const
 	std::vector<float> valuesf(m_region[0] * m_region[1] * 4);
 	std::vector<uchar> valuesui(m_region[0] * m_region[1] * 4);
 
-	uint32_t crt_img = 0;
 	for (auto img : imgs)
 	{
 		QImage qimg = QImage(m_region[0], m_region[1], QImage::Format::Format_RGB32);
@@ -213,7 +267,7 @@ void SIFT::WriteOctaveImagesOnDisk(Octave & o, uint32_t o_idx) const
 			memcpy(qimg.scanLine(row), &valuesui[i], qimg.bytesPerLine());
 		}
 
-		bool t = qimg.save(QString::fromStdString("D:\\workspace\\sift tests\\Octave"+ std::to_string(o_idx) + " - img" + std::to_string(crt_img++)) + ".png", nullptr, 100);
+		bool t = qimg.save(QString::fromStdString("D:\\workspace\\sift tests\\Octave"+ std::to_string(o_idx) + " - img" + std::to_string(m_current_img++)) + ".png", nullptr, 100);
 	}
 }
 

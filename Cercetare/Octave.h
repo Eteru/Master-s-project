@@ -4,6 +4,8 @@
 #include <vector>
 #include <CL/cl.hpp>
 
+#include "Structs.h"
+
 class Octave
 {
 public:
@@ -30,7 +32,7 @@ public:
 
 	void DoG();
 	void ComputeLocalMaxima();
-	std::vector<double> ComputeOrientation();
+	std::vector<FeaturePoint> ComputeOrientation();
 
 private:
 	static const uint32_t BLUR_KERNEL_SIZE = 7;

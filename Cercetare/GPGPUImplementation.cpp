@@ -395,7 +395,6 @@ float GPGPUImplementation::KMeans(QImage & img, const int centroid_count)
 
 	try
 	{
-		cl_float3 pattern = { 0.f,0.f,0.f };
 		cl::Kernel & kmeans = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_KMEANS);
 		cl::Kernel & kmeans_draw = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_KMEANS_DRAW);
 		cl::Kernel & kmeans_update_centroids = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_KMEANS_UPDATE_CENTROIDS);
@@ -486,6 +485,7 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 	int neuron_count = 3;
 	int noise_kern_size = 3;
 	int epochs = 200; // number of iterations
+	std::cout << img.width() << ", " << img.height() << std::endl;
 	uint32_t total_sz = img.width() * img.height();
 	const double ct_learning_rate = 0.1;
 	const double time_constant = epochs / log(neuron_count);
@@ -677,6 +677,57 @@ void GPGPUImplementation::RunSIFT(QImage & img)
 	{
 		std::cerr << "RunSIFT: " << err.what() << " with error: " << err.err() << std::endl;
 	}
+}
+
+std::vector<float> GPGPUImplementation::FindImageSIFT(QImage & img, QImage & img_to_find)
+{
+	std::vector<float> rect;
+
+	try
+	{
+		cl_int res;
+		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_FLOAT);
+
+		cl::Kernel kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_GRAYSCALE);
+		
+		// Default image
+		cl::Image2D grayscaled = cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, img.width(), img.height());
+
+		res = kernel.setArg(0, *m_data_original);
+		res = kernel.setArg(1, grayscaled);
+		
+		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_globalRange, cl::NullRange);
+
+		m_queue.finish();
+
+		// Image to find
+		//cl::Image2D img_tf = cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, img_to_find.width(), img_to_find.height(), 0, 0, &res);
+		cl::Image2D grayscaled_tf= cl::Image2D(m_contextCL, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, imf, img_to_find.width(), img_to_find.height(), 0, 0, &res);
+
+		cl::size_t<3> origin, region;
+		origin[0] = 0; origin[1] = 0, origin[2] = 0;
+		region[0] = img_to_find.width(); region[1] = img_to_find.height(); region[2] = 1;
+
+		cl::NDRange range = cl::NDRange(img_to_find.width(), img_to_find.height());
+
+		res = m_queue.enqueueWriteImage(*m_data_back, CL_TRUE, origin, region, 0, 0, img_to_find.bits());
+		//res = m_queue.enqueueWriteImage(*m_data_original, CL_TRUE, m_origin, m_region, 0, 0, img_to_find.bits());
+
+		res = kernel.setArg(0, *m_data_back);
+		res = kernel.setArg(1, grayscaled_tf);
+
+		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, range, cl::NullRange);
+
+		m_queue.finish();
+
+		rect = m_sift.FindImage(&grayscaled, m_width, m_height, &grayscaled_tf, img_to_find.width(), img_to_find.height());
+	}
+	catch (const cl::Error & err)
+	{
+		std::cerr << "FindImageSIFT: " << err.what() << " with error: " << err.err() << std::endl;
+	}
+
+	return rect;
 }
 
 std::pair<float, float> GPGPUImplementation::CheckSegmentationNeurons(cl::Buffer & neuronsCL, std::vector<Neuron> & neurons)

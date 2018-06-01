@@ -2,8 +2,8 @@
 #include "Structs.h"
 
 const sampler_t srcSampler = CLK_NORMALIZED_COORDS_FALSE |
-							CLK_ADDRESS_CLAMP_TO_EDGE |
-							CLK_FILTER_NEAREST;
+CLK_ADDRESS_CLAMP_TO_EDGE |
+CLK_FILTER_NEAREST;
 
 __kernel void kmeans(
 	read_only image2d_t input,
@@ -22,7 +22,7 @@ __kernel void kmeans(
 	float3 delta;
 	float3 rgb = read_imagef(input, srcSampler, imgCoords).xyz;
 
-	for (int i = 0; i < centroids_no; ++i) 
+	for (int i = 0; i < centroids_no; ++i)
 	{
 		delta = (float3)(centroids[i].value_x, centroids[i].value_y, centroids[i].value_z) - rgb;
 		delta *= delta;
@@ -35,11 +35,18 @@ __kernel void kmeans(
 		}
 	}
 
+	uint sz = width * height;
+	uint index = width * imgCoords.y + imgCoords.x;
+	for (int i = 0; i < centroids_no; ++i)
+	{
+		buckets[i * sz + index] = (float3)(0, 0, 0);
+	}
 	//printf("centroid=%d, count=%d\n", centroid_idx, centroids[centroid_idx].count);
 
-	uint idx = atomic_inc(&centroids[centroid_idx].count);
+	//uint idx = 
 	//printf("[%d]: centroid=%d, count=%d\n", idx, centroid_idx, centroids[centroid_idx].count);
-	buckets[centroid_idx * width * height + idx] = rgb;
+	buckets[centroid_idx * sz + index] = rgb;
+	//atomic_inc(&centroids[centroid_idx].count);
 }
 
 __kernel void kmeans_draw(
@@ -57,19 +64,19 @@ __kernel void kmeans_draw(
 	float3 delta;
 	float3 rgb = read_imagef(input, srcSampler, imgCoords).xyz;
 
-	for (int i = 0; i < centroids_no; ++i) 
+	for (int i = 0; i < centroids_no; ++i)
 	{
 		delta = (float3)(centroids[i].value_x, centroids[i].value_y, centroids[i].value_z) - rgb;
 		delta *= delta;
 		d = delta.x + delta.y + delta.z;
 
-		if (d < dist) 
+		if (d < dist)
 		{
 			dist = d;
 			centroid_idx = i;
 		}
 	}
-
+	//printf("(%f, %f, %f)\n", centroids[centroid_idx].value_x, centroids[centroid_idx].value_y, centroids[centroid_idx].value_z);
 	write_imagef(output, imgCoords, (float4)(centroids[centroid_idx].value_x, centroids[centroid_idx].value_y, centroids[centroid_idx].value_z, 1.f));
 }
 
@@ -83,27 +90,46 @@ __kernel void update_centroids(
 {
 	int pos = get_global_id(0);
 	unsigned long offset = pos * width * height;
+	unsigned long end = offset + width * height;
+	unsigned long half_end = offset + width * height * 0.5f;
 
-	if (centroids[pos].count == 0)
-	{
-		return;
-	}
-	
+	//if (centroids[pos].count == 0)
+	//{
+	//	return;
+	//}
+
 	centroids[pos].value_x = 0;
 	centroids[pos].value_y = 0;
 	centroids[pos].value_z = 0;
 
-	for (int i = 0; i < centroids[pos].count; ++i)
+	unsigned long s_i;
+	for (unsigned long i = offset, j = 0; i < half_end; ++i, ++j)
 	{
-		centroids[pos].value_x += buckets[offset + i].x;
-		centroids[pos].value_y += buckets[offset + i].y;
-		centroids[pos].value_z += buckets[offset + i].z;
+		if (any(isgreater(buckets[i], 0)))
+		{
+			centroids[pos].value_x += buckets[i].x;
+			centroids[pos].value_y += buckets[i].y;
+			centroids[pos].value_z += buckets[i].z;
+		
+			++centroids[pos].count;
+		}
+
+		s_i = half_end + j;
+		//printf("%d + %d\n", s_i);
+		if (any(isgreater(buckets[s_i], 0)))
+		{
+			centroids[pos].value_x += buckets[s_i].x;
+			centroids[pos].value_y += buckets[s_i].y;
+			centroids[pos].value_z += buckets[s_i].z;
+
+			++centroids[pos].count;
+		}
 	}
-	
+
 	centroids[pos].value_x /= centroids[pos].count;
 	centroids[pos].value_y /= centroids[pos].count;
 	centroids[pos].value_z /= centroids[pos].count;
-	
+
 	//printf("\nSetting centroid[%d] count to 0\n\n", pos);
 	centroids[pos].count = 0;
 }

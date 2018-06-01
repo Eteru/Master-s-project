@@ -43,6 +43,7 @@ private slots:
 	void OnSOMClicked();
 
 	void OnSIFTClcked();
+	void OnFindImageClicked();
 
 	void OnBenchmarkClicked();
 

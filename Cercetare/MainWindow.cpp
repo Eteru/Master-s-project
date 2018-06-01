@@ -1,6 +1,7 @@
 
 #include "MainWindow.h"
 
+#include <QPainter>
 #include <QBuffer>
 #include <QFileDialog>
 #include <QInputDialog>
@@ -14,6 +15,7 @@
 
 #include "Benchmark.h"
 #include "ConvolutionDialog.h"
+#include "ShowImageDialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent), m_scale_factor(1.0)
@@ -157,6 +159,7 @@ void MainWindow::SetActions()
 
 	// Descriptors
 	connect(m_ui.actionSIFT, SIGNAL(triggered()), this, SLOT(OnSIFTClcked()));
+	connect(m_ui.actionFind_Image, SIGNAL(triggered()), this, SLOT(OnFindImageClicked()));
 
 	// Help
 	connect(m_ui.actionBenchmark, SIGNAL(triggered()), this, SLOT(OnBenchmarkClicked()));
@@ -350,6 +353,49 @@ void MainWindow::OnSIFTClcked()
 {
 	m_cl.RunSIFT(m_img);
 	labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
+}
+
+void MainWindow::OnFindImageClicked()
+{
+	const QString DEFAULT_DIR_KEY("default_dir");
+	QSettings MySettings;
+
+	QString filename = QFileDialog::getOpenFileName(
+		this, "Select a file", MySettings.value(DEFAULT_DIR_KEY).toString());
+
+	if (filename.isEmpty()) {
+		return;
+	}
+	else {
+		// save current dir
+		QDir CurrentDir;
+		MySettings.setValue(DEFAULT_DIR_KEY,
+			CurrentDir.absoluteFilePath(filename));
+
+		QImage img;
+		img.load(filename);
+
+		ShowImageDialog dialog;
+		dialog.SetImage(img);
+
+		std::vector<float> rect = m_cl.FindImageSIFT(m_img, img);
+
+		int left = rect[0] * m_img.width();
+		int top = rect[2] * m_img.height();
+		int width = (rect[1] - rect[0]) * m_img.width();
+		int height = (rect[3] - rect[2]) * m_img.height();
+
+		QPainter p;
+		p.begin(&m_img);
+		p.setPen(QPen(QColor(Qt::red)));
+		p.setBrush(QBrush(QColor(Qt::red), Qt::NoBrush));
+		p.drawRect(QRect(left, top, width, height));
+		p.end();
+
+		labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
+
+		dialog.exec();
+	}
 }
 
 void MainWindow::OnBenchmarkClicked()

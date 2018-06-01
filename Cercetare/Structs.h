@@ -1,5 +1,6 @@
 #pragma once
 
+#define MAX_ORIS 128
 
 struct Centroid
 {
@@ -28,4 +29,11 @@ struct KeyPoint
 	unsigned x;
 	unsigned y;
 	unsigned scale;
+};
+
+struct FeaturePoint
+{
+	float x;
+	float y;
+	double orientations[MAX_ORIS];
 };
