@@ -26,15 +26,17 @@ float SequentialImplementation::Grayscale(QImage & img)
 
 	auto start = std::chrono::system_clock::now();
 
-	for (int i = 0; i < sz; i += 4)
+	for (int i = 0; i < sz * 4; i += 4)
 	{
-		values_out[i] = static_cast<uchar>(values[i] * 0.21);
-		values_out[i + 1] = static_cast<uchar>(values[i + 1] * 0.72);
-		values_out[i + 2] = static_cast<uchar>(values[i + 2] * 0.07);
+		float value = values[i] * 0.21f + values[i + 1] * 0.72f + values[i + 2] * 0.07f;
+		values_out[i] = static_cast<uchar>(value);
+		values_out[i + 1] = static_cast<uchar>(value);
+		values_out[i + 2] = static_cast<uchar>(value);
 	}
 
 	auto end = std::chrono::system_clock::now();
 
+	CopyBufferToImage(values_out, img);
 	return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 }
 
@@ -66,7 +68,7 @@ float SequentialImplementation::GaussianBlur(QImage & img)
 		for (int j = 0; j < img.width(); ++j)
 		{
 			size_t filter_index = 0;
-			uchar R = 0, G = 0, B = 0;
+			float R = 0.f, G = 0.f, B = 0.f;
 			for (int r = -HALF_FILTER_SIZE; r <= HALF_FILTER_SIZE; r++)
 			{
 				for (int c = -HALF_FILTER_SIZE; c <= HALF_FILTER_SIZE; c++)
@@ -88,14 +90,15 @@ float SequentialImplementation::GaussianBlur(QImage & img)
 
 			size_t index = (i * img.height() + j) * 4;
 
-			values_out[index] = R;
-			values_out[index + 1] = G;
-			values_out[index + 2] = B;
+			values_out[index] = static_cast<uchar>(R);
+			values_out[index + 1] = static_cast<uchar>(G);
+			values_out[index + 2] = static_cast<uchar>(B);
 		}
 	}
 
 	auto end = std::chrono::system_clock::now();
 
+	CopyBufferToImage(values_out, img);
 	return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 }
 
@@ -206,6 +209,16 @@ float SequentialImplementation::KMeans(QImage & img, const int centroid_count)
 
 float SequentialImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 {
+	int max_iterations = 1;
+	int epochs = 200; // number of iterations
+	int neuron_count = 3;
+	uint32_t total_sz = img.width() * img.height();
+	const double ct_learning_rate = 0.1;
+	const double time_constant = epochs / log(neuron_count);
+
+	// generate neurons
+	std::vector<Neuron> neurons;
+
 	// copy data to local vector
 	std::vector<uchar> values_ui;
 
@@ -217,17 +230,7 @@ float SequentialImplementation::SOMSegmentation(QImage & img, QImage * ground_tr
 		values.push_back(values_ui[i] / 255.f);
 	}
 
-	int max_iterations = 1;
-	int epochs = 200; // number of iterations
-	int neuron_count = 3;
-	uint32_t total_sz = img.width() * img.height();
-	const double ct_learning_rate = 0.1;
-	const double time_constant = epochs / log(neuron_count);
-
-	// generate neurons
-	std::vector<Neuron> neurons;
 	GenerateNeurons(3, neurons);
-
 
 	auto start = std::chrono::system_clock::now();
 
@@ -272,9 +275,9 @@ float SequentialImplementation::SOMSegmentation(QImage & img, QImage * ground_tr
 
 				float influence = exp(-(n_dist * n_dist) / (2.f * (neigh_dist * neigh_dist)));
 
-				neurons[c].value_x += learning_rate * influence * (int)(values[index] - neurons[c].value_x);
-				neurons[c].value_y += learning_rate * influence * (int)(values[index + 1] - neurons[c].value_y);
-				neurons[c].value_z += learning_rate * influence * (int)(values[index + 2] - neurons[c].value_z);
+				neurons[c].value_x += learning_rate * influence * (values[index] - neurons[c].value_x);
+				neurons[c].value_y += learning_rate * influence * (values[index + 1] - neurons[c].value_y);
+				neurons[c].value_z += learning_rate * influence * (values[index + 2] - neurons[c].value_z);
 			}
 		}
 	}

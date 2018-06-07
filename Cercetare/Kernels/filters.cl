@@ -90,6 +90,6 @@ __kernel void sharpness_filter(
 		}
 	}
 
-	sum += read_imagef(input, srcSampler, imgCoords).xyz * 255;
-	write_imagef(output, imgCoords, (float4)(sum.xyz, 255));
+	sum += read_imagef(input, srcSampler, imgCoords).xyz;
+	write_imagef(output, imgCoords, (float4)(sum.xyz, 1.f));
 }

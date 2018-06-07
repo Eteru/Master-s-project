@@ -59,11 +59,4 @@ private:
 	void LoadData(QImage & img);
 
 	std::pair<float, float> CheckSegmentationNeurons(cl::Buffer & neuronsCL, std::vector<Neuron> & neurons);
-
-	float GaussianFunction(int niu, int thetha, int cluster_count) const;
-	float NormalizedEuclideanDistance(const Neuron & n1, const Neuron & n2) const;
-	float ValidityMeasure(const std::vector<uchar> & data, const std::vector<Neuron> & neurons) const;
-	float DaviesBouldinIndex(const std::vector<uchar> & data, const std::vector<Neuron> & neurons) const;
-
-	std::pair<float, float> ComputeVMAndDBIndices(QImage * img);
 };

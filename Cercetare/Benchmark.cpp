@@ -24,7 +24,7 @@ std::string Benchmark::RunTests(GPGPUImplementation & gpgpu, QImage & img)
 
 	std::vector<std::string> names = { "Sequential", "Naive Parallelism", "GPGPU" };
 	std::vector<Implementation *> impls = { &si, &pi, &gpgpu };
-	std::vector<std::string> images = { "knife_128.jpg", "knife_256.jpg" , "knife_512.jpg" , "knife_1024.jpg" , "knife_2048.jpg" };
+	std::vector<std::string> images = { "knife_128.jpg", "knife_256.jpg" , "knife_512.jpg" , "knife_1024.jpg" /*, "knife_2048.jpg" */};
 
 	size_t targets = impls.size();
 	Matrix grayscale(targets);
@@ -64,8 +64,8 @@ std::string Benchmark::RunTests(GPGPUImplementation & gpgpu, QImage & img)
 			{
 				//grayscale[target][i] += impls[target]->Grayscale(crt_img.copy());
 				//gaussian[target][i] += impls[target]->GaussianBlur(crt_img.copy());
-				kmeans[target][i] += impls[target]->KMeans(crt_img.copy(), 3);
-				//som[target][i] += impls[target]->SOMSegmentation(crt_img.copy());
+				//kmeans[target][i] += impls[target]->KMeans(crt_img.copy(), 3);
+				som[target][i] += impls[target]->SOMSegmentation(crt_img.copy());
 			}
 
 			grayscale[target][i] /= (iterations_no * 1000000.f);
@@ -77,7 +77,7 @@ std::string Benchmark::RunTests(GPGPUImplementation & gpgpu, QImage & img)
 		//output += names[target] + "," + std::to_string(grayscale[target]) + ", " + std::to_string(gaussian[target]) + ", " + std::to_string(kmeans[target]) + ", " + std::to_string(som[target]) + "\n";
 	}
 
-	std::vector<int> sizes = { 128, 256, 512, 1024, 2048 };
+	std::vector<int> sizes = { 128, 256, 512, 1024/*, 2048 */};
 	for (int i = 0; i < sizes.size(); ++i)
 	{
 		grayscale_output += std::to_string(sizes[i]);

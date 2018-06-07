@@ -416,11 +416,10 @@ float GPGPUImplementation::KMeans(QImage & img, const int centroid_count)
 		res = kmeans_update_centroids.setArg(1, bucketsCL);
 		res = kmeans_update_centroids.setArg(2, m_width);
 		res = kmeans_update_centroids.setArg(3, m_height);
-		res = kmeans_update_centroids.setArg(4, centroid_count);
 
 		cl::Event event;
 
-		for (int i = 0; i < 5; ++i)
+		for (int i = 0; i < 20; ++i)
 		{
 			// Run the kmeans kernel
 			res = m_queue.enqueueNDRangeKernel(kmeans, cl::NullRange, m_globalRange, cl::NullRange, nullptr, &event);
@@ -430,10 +429,14 @@ float GPGPUImplementation::KMeans(QImage & img, const int centroid_count)
 
 
 			// Run the update centroid kernel
-			res = m_queue.enqueueNDRangeKernel(kmeans_update_centroids, cl::NullRange, cl::NDRange(centroid_count, 1), cl::NullRange, nullptr, &event);
-			m_queue.finish();
+			for (int uc = 0; uc < centroid_count; ++uc)
+			{
+				res = kmeans_update_centroids.setArg(4, uc);
 
-			ret += event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+				res = m_queue.enqueueNDRangeKernel(kmeans_update_centroids, cl::NullRange, m_globalRange, cl::NullRange, nullptr, &event);
+				m_queue.finish();
+				ret += event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+			}
 		}
 
 		// Run a last iteration of K-Means that will also change de colors
@@ -591,9 +594,10 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 
 		/// todo: change to m_data_back if nosie reduction is used
 		res = m_queue.enqueueReadImage(*m_data_front, CL_TRUE, m_origin, m_region, 0, 0, &m_values.front());
+
 		m_queue.finish();
-		
 		CopyBufferToImage(m_values, img);
+
 	}
 	catch (const cl::Error & err)
 	{
@@ -755,179 +759,6 @@ std::pair<float, float> GPGPUImplementation::CheckSegmentationNeurons(cl::Buffer
 	{
 		std::cerr << "CheckSegmentationNeurons: " << err.what() << " with error: " << err.err() << std::endl;
 	}
-
-	return{ VM, DBI };
-}
-
-float GPGPUImplementation::GaussianFunction(int niu, int thetha, int cluster_count) const
-{
-	static const float double_pi = 2 * 3.14159f;
-	float pow_thetha = thetha * thetha;
-	float pow_k_niu = (cluster_count - niu) * (cluster_count - niu);
-
-	return expf(-(pow_k_niu / (2*pow_thetha))) / sqrtf(double_pi * pow_thetha);
-}
-
-float GPGPUImplementation::NormalizedEuclideanDistance(const Neuron & n1, const Neuron & n2) const
-{
-	cl_float3 diff = { n1.value_x - n2.value_x, n1.value_y - n2.value_y, n1.value_z - n2.value_z };
-
-	return sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
-}
-
-float GPGPUImplementation::ValidityMeasure(const std::vector<uchar>& data, const std::vector<Neuron>& neurons) const
-{
-	static const int c = 15; // can be between 15 and 25
-	float intra_distance = 0.f;
-
-	for (int i = 0; i < data.size(); i += 4)
-	{
-		float min_dist = FLT_MAX;
-		size_t c_idx = -1;
-
-		Neuron crt_pixel = {
-			static_cast<unsigned>(data[i]) / 255.f,
-			static_cast<unsigned>(data[i + 1]) / 255.f,
-			static_cast<unsigned>(data[i + 2]) / 255.f
-		};
-		
-
-		for (int n_idx = 0; n_idx < neurons.size(); ++n_idx) {
-			
-			float dist = NormalizedEuclideanDistance(crt_pixel, neurons[n_idx]);
-			
-			dist *= dist;
-
-			if (dist < min_dist)
-			{
-				min_dist = dist;
-				c_idx = n_idx;
-			}
-		}
-
-		intra_distance += min_dist;
-	}
-
-	intra_distance /= (data.size() / 4.f);
-
-	float inter_distance = FLT_MAX;
-	for (int i = 0; i < neurons.size(); ++i)
-	{
-		for (int j = 0; j < neurons.size(); ++j)
-		{
-			if (i == j) {
-				continue;
-			}
-
-			float dist = NormalizedEuclideanDistance(neurons[i], neurons[j]);
-
-			dist *= dist;
-			
-			if (dist < inter_distance)
-			{
-				inter_distance = dist;
-			}
-		}
-	}
-
-	float y = c * GaussianFunction(2, 1, neurons.size()) + 1;
-
-	return y * (intra_distance / inter_distance);
-}
-
-float GPGPUImplementation::DaviesBouldinIndex(const std::vector<uchar>& data, const std::vector<Neuron>& neurons) const
-{
-	std::vector<int> cluster_size(neurons.size(), 0);
-	std::vector<float> cluster_distances(neurons.size(), 0.f);
-
-	for (int i = 0; i < data.size(); i += 4)
-	{
-		float min_dist = FLT_MAX;
-		size_t c_idx = -1;
-
-		Neuron crt_pixel = {
-			static_cast<cl_float>(static_cast<unsigned>(data[i]) / 255.f),
-			static_cast<cl_float>(static_cast<unsigned>(data[i + 1]) / 255.f),
-			static_cast<cl_float>(static_cast<unsigned>(data[i + 2] / 255.f))
-		};
-		
-
-		for (int n_idx = 0; n_idx < neurons.size(); ++n_idx)
-		{
-
-			float dist = NormalizedEuclideanDistance(crt_pixel, neurons[n_idx]);
-
-			if (dist < min_dist)
-			{
-				min_dist = dist;
-				c_idx = n_idx;
-			}
-		}
-
-		++cluster_size[c_idx];
-
-		cluster_distances[c_idx] += min_dist;
-	}
-
-	// returns a safety error, doing it by hand
-	//std::transform(cluster_distances.begin(), cluster_distances.end(), cluster_size.begin(), cluster_distances, std::divides<float>());
-	for (int i = 0; i < cluster_distances.size(); ++i)
-	{
-		cluster_distances[i] /= static_cast<float>(cluster_size[i]);
-	}
-
-	std::vector<float> D(neurons.size(), 0.f);
-	for (int i = 0; i < neurons.size(); ++i)
-	{
-		for (int j = 0; j < neurons.size(); ++j)
-		{
-			if (i == j)
-			{
-				continue;
-			}
-
-			float dist = NormalizedEuclideanDistance(neurons[i], neurons[j]);
-			float Rij = (cluster_distances[i] + cluster_distances[j]) / dist;
-
-
-			if (Rij > D[i])
-			{
-				D[i] = Rij;
-			}
-		}
-	}
-
-	return std::accumulate(D.begin(), D.end(), 0.f) / D.size();
-}
-
-std::pair<float, float> GPGPUImplementation::ComputeVMAndDBIndices(QImage * img)
-{
-	std::vector<uchar> values(img->byteCount());
-	
-	CopyImageToBuffer(*img, values);
-
-	std::set<QRgb> uq_neuron;
-	for (int i = 0; i < img->height(); ++i)
-	{
-		for (int j = 0; j < img->width(); ++j)
-		{
-			QRgb px = img->pixel(QPoint(i, j));
-
-			//std::cout << "[Ground Truth]: (" << i << "," << j << ") = (" + std::to_string(qRed(px)) + ", " + std::to_string(qGreen(px)) + ", " + std::to_string(qBlue(px)) + ")" << std::endl;
-			uq_neuron.insert(px);
-		}
-	}
-
-	std::vector<Neuron> neurons;
-	for (auto n : uq_neuron)
-	{
-		Neuron nv = { qRed(n) / 256.f, qGreen(n) / 256.f, qBlue(n) / 256.f };
-
-		neurons.push_back(nv);
-	}
-
-	float VM = ValidityMeasure(values, neurons);
-	float DBI = DaviesBouldinIndex(values, neurons);
 
 	return{ VM, DBI };
 }

@@ -29,6 +29,9 @@ public:
 	virtual void RunSIFT(QImage & img) = 0;
 	virtual std::vector<float> FindImageSIFT(QImage & img, QImage & img_to_find) = 0;
 
+	std::vector<float> MSE(QImage & imgGPU, QImage & imgCPU) const;
+	std::vector<float> PSNR(QImage & imgGPU, QImage & imgCPU) const;
+
 protected:
 	std::function<void(std::string)> m_log;
 
@@ -39,5 +42,14 @@ protected:
 	void GenerateNeurons(const uint32_t count, std::vector<Neuron> & neurons);
 
 	float Distance(const Centroid & c, float x, float y, float z) const;
+
+	float GaussianFunction(int niu, int thetha, int cluster_count) const;
+	float NormalizedEuclideanDistance(const Neuron & n1, const Neuron & n2) const;
+
+	float ValidityMeasure(const std::vector<uchar> & data, const std::vector<Neuron> & neurons) const;
+	float DaviesBouldinIndex(const std::vector<uchar> & data, const std::vector<Neuron> & neurons) const;
+
+	std::pair<float, float> ComputeVMAndDBIndices(QImage * img);
+	std::pair<float, float> ComputeVMAndDBIndices(std::vector<uchar> & values, std::vector<Neuron> & neurons);
 };
 

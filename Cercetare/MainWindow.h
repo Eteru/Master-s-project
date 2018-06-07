@@ -46,6 +46,7 @@ private slots:
 	void OnFindImageClicked();
 
 	void OnBenchmarkClicked();
+	void OnQualityTestsClicked();
 
 private:
 	Ui::CercetareClass m_ui;

@@ -16,6 +16,7 @@
 #include "Benchmark.h"
 #include "ConvolutionDialog.h"
 #include "ShowImageDialog.h"
+#include "SequentialImplementation.h"
 
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent), m_scale_factor(1.0)
@@ -163,6 +164,7 @@ void MainWindow::SetActions()
 
 	// Help
 	connect(m_ui.actionBenchmark, SIGNAL(triggered()), this, SLOT(OnBenchmarkClicked()));
+	connect(m_ui.actionQuality_Tests, SIGNAL(triggered()), this, SLOT(OnQualityTestsClicked()));	
 }
 
 void MainWindow::ScaleImage(double factor)
@@ -341,8 +343,13 @@ void MainWindow::OnSOMClicked()
 		}
 	}
 
-	m_cl.SOMSegmentation(m_img, ground_truth);
-	labelImageViewerResult->setPixmap(QPixmap::fromImage(m_img));
+	QImage img = m_img.copy();
+	m_cl.SOMSegmentation(img, ground_truth);
+	//SequentialImplementation si;
+	//si.SetLogFunction(std::bind(&MainWindow::Log, this, std::placeholders::_1));
+	//
+	//si.SOMSegmentation(img);
+	labelImageViewerResult->setPixmap(QPixmap::fromImage(img));
 
 
 	delete ground_truth;
@@ -401,4 +408,43 @@ void MainWindow::OnFindImageClicked()
 void MainWindow::OnBenchmarkClicked()
 {
 	Log(Benchmark::RunTests(m_cl, m_img));
+}
+
+void MainWindow::OnQualityTestsClicked()
+{
+	QImage imgGPUGrayscale, imgCPUGrayscale, imgGPUGaussianBlur, imgCPUGaussianBlur;
+	imgGPUGrayscale = m_img.copy();
+	imgCPUGrayscale = m_img.copy();
+
+	imgGPUGaussianBlur = m_img.copy();
+	imgCPUGaussianBlur = m_img.copy();
+
+	m_cl.Grayscale(imgGPUGrayscale);
+	m_cl.GaussianBlur(imgGPUGaussianBlur);
+
+	SequentialImplementation si;
+
+	si.Grayscale(imgCPUGrayscale);
+	si.GaussianBlur(imgCPUGaussianBlur);
+
+	std::vector<float> grayscale_values = m_cl.PSNR(imgGPUGrayscale, imgCPUGrayscale);
+	std::vector<float> GaussianBlur_values = m_cl.PSNR(imgGPUGaussianBlur, imgCPUGaussianBlur);
+
+	std::string res = "Grayscale\nMSE R, MSE G, MSE B, PSNR\n";
+	for (float v : grayscale_values)
+	{
+		res += std::to_string(v) + ", ";
+	}
+	res += "\nGaussianBlur\nMSE R, MSE G, MSE B, PSNR\n";
+	for (float v : GaussianBlur_values)
+	{
+		res += std::to_string(v) + ", ";
+	}
+
+	imgGPUGrayscale.save("D:\\workspace\\sift tests\\GPU_grayscale.png", nullptr, 100);
+	imgGPUGaussianBlur.save("D:\\workspace\\sift tests\\GPU_GaussianBlur.png", nullptr, 100);
+	imgCPUGrayscale.save("D:\\workspace\\sift tests\\CPU_grayscale.png", nullptr, 100);
+	imgCPUGaussianBlur.save("D:\\workspace\\sift tests\\CPU_GaussianBlur.png", nullptr, 100);
+
+	Log(res);
 }

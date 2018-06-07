@@ -140,6 +140,7 @@
      <string>Help</string>
     </property>
     <addaction name="actionBenchmark"/>
+    <addaction name="actionQuality_Tests"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -230,6 +231,11 @@
   <action name="actionFind_Image">
    <property name="text">
     <string>Find Image</string>
+   </property>
+  </action>
+  <action name="actionQuality_Tests">
+   <property name="text">
+    <string>Quality Tests</string>
    </property>
   </action>
  </widget>
