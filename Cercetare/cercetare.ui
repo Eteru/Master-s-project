@@ -126,7 +126,6 @@
      <string>Edit</string>
     </property>
     <addaction name="actionGrayscale"/>
-    <addaction name="actionResize"/>
    </widget>
    <widget class="QMenu" name="menuDescriptors">
     <property name="title">

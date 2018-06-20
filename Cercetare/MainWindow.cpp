@@ -143,7 +143,7 @@ void MainWindow::SetActions()
 
 	// Edit
 	connect(m_ui.actionGrayscale, SIGNAL(triggered()), this, SLOT(OnGrayscaleClicked()));
-	connect(m_ui.actionResize, SIGNAL(triggered()), this, SLOT(OnResizeClicked()));
+	//connect(m_ui.actionResize, SIGNAL(triggered()), this, SLOT(OnResizeClicked()));
 
 	// FIlters
 	connect(m_ui.actionSobel, SIGNAL(triggered()), this, SLOT(OnSobelClicked()));
@@ -165,6 +165,18 @@ void MainWindow::SetActions()
 	// Help
 	connect(m_ui.actionBenchmark, SIGNAL(triggered()), this, SLOT(OnBenchmarkClicked()));
 	connect(m_ui.actionQuality_Tests, SIGNAL(triggered()), this, SLOT(OnQualityTestsClicked()));	
+
+	m_ui.menuEdit->setEnabled(false);
+	m_ui.menuFilters->setEnabled(false);
+	m_ui.menuSegmentation->setEnabled(false);
+	m_ui.menuDescriptors->setEnabled(false);
+	m_ui.menuHelp->setEnabled(false);
+	m_ui.actionSave_image->setEnabled(false);
+
+	m_ui.pushButtonSwitchView->setEnabled(false);
+	m_ui.pushButtonZoomIn->setEnabled(false);
+	m_ui.pushButtonZoomOut->setEnabled(false);
+	m_ui.pushButtonZoomReset->setEnabled(false);
 }
 
 void MainWindow::ScaleImage(double factor)
@@ -234,7 +246,18 @@ void MainWindow::OnLoadImageClicked()
 		scrollAreaViewImageOriginal->setHidden(true);
 		scrollAreaViewImageResult->setHidden(false);
 
-		//Log(Benchmark::RunTests(m_cl, m_img));
+
+		m_ui.menuEdit->setEnabled(true);
+		m_ui.menuFilters->setEnabled(true);
+		m_ui.menuSegmentation->setEnabled(true);
+		m_ui.menuDescriptors->setEnabled(true);
+		m_ui.menuHelp->setEnabled(true);
+		m_ui.actionSave_image->setEnabled(true);
+
+		m_ui.pushButtonSwitchView->setEnabled(true);
+		m_ui.pushButtonZoomIn->setEnabled(true);
+		m_ui.pushButtonZoomOut->setEnabled(true);
+		m_ui.pushButtonZoomReset->setEnabled(true);
 	}
 }
 

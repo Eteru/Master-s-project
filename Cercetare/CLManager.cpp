@@ -59,6 +59,7 @@ bool CLManager::Init()
 		m_kernels[Constants::KERNEL_MAGN_AND_ORIEN_INTERP] = cl::Kernel(program, Constants::KERNEL_MAGN_AND_ORIEN_INTERP.c_str());
 		m_kernels[Constants::KERNEL_GENERATE_FEATURE_POINTS] = cl::Kernel(program, Constants::KERNEL_GENERATE_FEATURE_POINTS.c_str());
 		m_kernels[Constants::KERNEL_EXTRACT_FEATURE_POINTS] = cl::Kernel(program, Constants::KERNEL_EXTRACT_FEATURE_POINTS.c_str());
+		m_kernels[Constants::KERNEL_DRAW_FEATURE_POINTS] = cl::Kernel(program, Constants::KERNEL_DRAW_FEATURE_POINTS.c_str());
 
 		LoadProgram(program, devices, "Kernels/filters.cl");
 		m_kernels[Constants::KERNEL_CONVOLUTE] = cl::Kernel(program, Constants::KERNEL_CONVOLUTE.c_str());

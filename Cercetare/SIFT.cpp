@@ -33,7 +33,6 @@ cl::Image2D * SIFT::Run(cl::Image2D * image, uint32_t w, uint32_t h)
 	float default_sigma = sqrtf(2.f) * 0.5f;
 
 	m_octaves.push_back(Octave(ref_img, default_sigma, crt_w, crt_h, NUMBER_OF_BLURS));
-	//WriteImageOnDisk(m_octaves[0].GetDefaultImage(), crt_w, crt_h, "ref_img0");
 
 	for (size_t i = 1; i < NUMBER_OF_OCTAVES; ++i)
 	{
@@ -41,7 +40,6 @@ cl::Image2D * SIFT::Run(cl::Image2D * image, uint32_t w, uint32_t h)
 		crt_h *= 0.5;
 	
 		m_octaves.push_back(Octave(m_octaves[i-1], crt_w, crt_h));
-		//WriteImageOnDisk(m_octaves[i].GetDefaultImage(), crt_w, crt_h, "ref_img" + std::to_string(i));
 	}
 
 	for(int i = 0; i < m_octaves.size(); ++i)
@@ -235,6 +233,7 @@ void SIFT::WriteOctaveImagesOnDisk(Octave & o, uint32_t o_idx) const
 	imgs.insert(imgs.end(), o.GetFeatures().begin(), o.GetFeatures().end());
 	imgs.insert(imgs.end(), o.GetMagnitudes().begin(), o.GetMagnitudes().end());
 	imgs.insert(imgs.end(), o.GetOrientations().begin(), o.GetOrientations().end());
+	imgs.push_back(o.GetDefaultImage());
 
 	cl::Context context = *CLManager::GetInstance()->GetContext();
 	cl::CommandQueue queue = *CLManager::GetInstance()->GetQueue();

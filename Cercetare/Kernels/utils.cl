@@ -495,3 +495,27 @@ __kernel void extract_feature_points(
 		feature_vector[pos].orientations[i] *= norm;
 	}
 }
+
+__kernel void draw_feature_points(
+	write_only image2d_t output,
+	global read_only struct FeaturePoint* feature_vector,
+	const unsigned int width,
+	const unsigned int height)
+{
+	int pos = get_global_id(0);
+
+	int x = feature_vector[pos].x * width;
+	int y = feature_vector[pos].y * height;
+
+	float4 color = (float4)(0.f, 1.f, 0.f, 1.f);
+
+	for (int i = x - 2; i <= x + 2; ++i)
+	{
+		for (int j = y - 2; j <= y + 2; ++j)
+		{
+			if (i < 0 || i >= width || j < 0 || j >= height)
+				continue;
+			write_imagef(output, (int2)(i,j), color);
+		}
+	}
+}

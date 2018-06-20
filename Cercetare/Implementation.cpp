@@ -51,7 +51,7 @@ void Implementation::GenerateCentroids(const uint32_t count, std::vector<Centroi
 {
 	centroids.resize(count);
 
-	std::cout << "Generated centroids: ";
+	std::string to_log = "Generated centroids: ";
 	for (Centroid & centroid : centroids)
 	{
 		centroid = {};
@@ -65,17 +65,18 @@ void Implementation::GenerateCentroids(const uint32_t count, std::vector<Centroi
 
 	for (Centroid & centroid : centroids)
 	{
-		std::cout << " (" << centroid.value_x << ", " << centroid.value_y << ", " << centroid.value_z << "), count = " << centroid.count;
+		to_log += " (" + std::to_string(centroid.value_x) + ", " + std::to_string(centroid.value_y) + ", " + std::to_string(centroid.value_z) + ")";
 	}
 
-	std::cout << std::endl;
+	to_log += "\n";
+	m_log(to_log);
 }
 
 void Implementation::GenerateNeurons(const uint32_t count, std::vector<Neuron>& neurons)
 {
 	neurons.resize(count);
 
-	std::cout << "Generated neurons: ";
+	std::string to_log = "Generated neurons: ";
 	for (Neuron & neuron : neurons)
 	{
 		neuron = {};
@@ -84,10 +85,11 @@ void Implementation::GenerateNeurons(const uint32_t count, std::vector<Neuron>& 
 		neuron.value_y = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 		neuron.value_z = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-		std::cout << " (" << neuron.value_x << ", " << neuron.value_y << ", " << neuron.value_z << ")";
+		to_log += " (" + std::to_string(neuron.value_x) + ", " + std::to_string(neuron.value_y) + ", " + std::to_string(neuron.value_z) + ")";
 	}
 
-	std::cout << std::endl;
+	to_log += "\n";
+	m_log(to_log);
 }
 
 float Implementation::Distance(const Centroid & c, float x, float y, float z) const
@@ -302,7 +304,6 @@ std::pair<float, float> Implementation::ComputeVMAndDBIndices(QImage * img)
 		{
 			QRgb px = img->pixel(QPoint(j, i));
 
-			//std::cout << "[Ground Truth]: (" << i << "," << j << ") = (" + std::to_string(qRed(px)) + ", " + std::to_string(qGreen(px)) + ", " + std::to_string(qBlue(px)) + ")" << std::endl;
 			uq_neuron.insert(px);
 		}
 	}

@@ -201,7 +201,6 @@ public:
         menuSegmentation->addAction(actionThreshold);
         menuSegmentation->addAction(actionSOM);
         menuEdit->addAction(actionGrayscale);
-        menuEdit->addAction(actionResize);
         menuDescriptors->addAction(actionSIFT);
         menuDescriptors->addAction(actionFind_Image);
         menuHelp->addAction(actionBenchmark);

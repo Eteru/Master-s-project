@@ -488,7 +488,7 @@ float GPGPUImplementation::SOMSegmentation(QImage & img, QImage * ground_truth)
 	int neuron_count = 3;
 	int noise_kern_size = 3;
 	int epochs = 200; // number of iterations
-	std::cout << img.width() << ", " << img.height() << std::endl;
+
 	uint32_t total_sz = img.width() * img.height();
 	const double ct_learning_rate = 0.1;
 	const double time_constant = epochs / log(neuron_count);
@@ -743,12 +743,13 @@ std::pair<float, float> GPGPUImplementation::CheckSegmentationNeurons(cl::Buffer
 		res = m_queue.enqueueReadBuffer(neuronsCL, CL_TRUE, 0, neurons.size() * sizeof(Neuron), &neurons[0], 0, NULL);
 		m_queue.finish();
 
-		std::cout << "Final neurons: ";
+		std::string to_log = "Final neurons: ";
 		for (Neuron & neuron : neurons)
 		{
-			std::cout << " (" << neuron.value_x << ", " << neuron.value_y << ", " << neuron.value_z << ")";
+			to_log += " (" + std::to_string(neuron.value_x) + ", " + std::to_string(neuron.value_y) + ", " + std::to_string(neuron.value_z) + ")";
 		}
-		std::cout << std::endl;
+		to_log += "\n";
+		m_log(to_log);
 
 		VM = ValidityMeasure(m_values_orig, neurons);
 		DBI = DaviesBouldinIndex(m_values_orig, neurons);

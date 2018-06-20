@@ -125,9 +125,13 @@ Octave::Octave(Octave & octave, uint32_t w, uint32_t h)
 		res = kernel.setArg(2, w);
 		res = kernel.setArg(3, h);
 
-		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange);
+		cl::Event ev;
+		res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange, nullptr, &ev);
 
 		m_queue.finish();
+
+		//std::cout << "Octave resize: " << (ev.getProfilingInfo<CL_PROFILING_COMMAND_END>() - ev.getProfilingInfo<CL_PROFILING_COMMAND_START>()) / 1000000.f << std::endl;
+
 
 		Blur();
 	}
@@ -222,6 +226,9 @@ void Octave::Blur()
 {
 	try
 	{
+		cl::Event ev;
+		unsigned long ret = 0;
+
 		cl_int res;
 		cl::Kernel & kernel = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
 		cl::Buffer convCL = cl::Buffer(m_context, CL_MEM_READ_ONLY, (1 + BLUR_KERNEL_SIZE * BLUR_KERNEL_SIZE) * sizeof(float), 0, 0);
@@ -232,17 +239,20 @@ void Octave::Blur()
 			std::vector<float> gaussian = GaussianKernel(BLUR_KERNEL_SIZE, sigma);
 			m_queue.enqueueWriteBuffer(convCL, CL_TRUE, 0, gaussian.size() * sizeof(float), &gaussian[0], 0, NULL);
 
-			// TODO: check just with default when done.
 			// Set arguments to kernel
 			res = kernel.setArg(0, i == 0 ? *m_default_image : *m_images[i-1]);
 			res = kernel.setArg(1, *m_images[i]);
 			res = kernel.setArg(2, convCL);
 
-			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange);
+			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange, nullptr, &ev);
+
 			m_queue.finish();
+			ret += ev.getProfilingInfo<CL_PROFILING_COMMAND_END>() - ev.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 
 			sigma *= SIGMA_INCREMENT;
 		}
+
+		//std::cout << "Octave blur=" << ret / 1000000.f << std::endl;
 
 	}
 	catch (const cl::Error & err)
@@ -255,6 +265,9 @@ void Octave::DoG()
 {
 	try
 	{
+		cl::Event ev;
+		unsigned long ret = 0;
+
 		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8);
 
 		cl_int res;
@@ -268,10 +281,15 @@ void Octave::DoG()
 			res = kernel.setArg(1, *m_images[i]);
 			res = kernel.setArg(2, *m_DoGs[crt_dog++]);
 
-			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange);
+			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange, nullptr, &ev);
 			m_queue.finish();
+
+			m_queue.finish();
+			ret += ev.getProfilingInfo<CL_PROFILING_COMMAND_END>() - ev.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+
 		}
 
+		//std::cout << "Octave DoG=" << ret / 1000000.f << std::endl;
 	}
 	catch (const cl::Error & err)
 	{
@@ -283,6 +301,9 @@ void Octave::ComputeLocalMaxima()
 {
 	try
 	{
+		cl::Event ev;
+		unsigned long ret = 0;
+
 		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8);
 
 		cl_int res;
@@ -297,9 +318,13 @@ void Octave::ComputeLocalMaxima()
 			res = kernel.setArg(2, *m_DoGs[i + 1]);
 			res = kernel.setArg(3, *m_points[crt_feature_i++]);
 
-			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange);
+			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange, nullptr, &ev);
+
 			m_queue.finish();
+			ret += ev.getProfilingInfo<CL_PROFILING_COMMAND_END>() - ev.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 		}
+
+		//std::cout << "Local maxima=" << ret / 1000000.f << std::endl;
 	}
 	catch (const cl::Error & err)
 	{
@@ -312,6 +337,9 @@ std::vector<FeaturePoint> Octave::ComputeOrientation()
 	std::vector<FeaturePoint> fvps;
 	try
 	{
+		cl::Event ev;
+		unsigned long ret = 0;
+
 		unsigned kps_size = m_width * m_height;
 
 		cl::ImageFormat imf = cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8);
@@ -322,6 +350,7 @@ std::vector<FeaturePoint> Octave::ComputeOrientation()
 		cl::Kernel & kernel_blur = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_CONVOLUTE);
 		cl::Kernel & kernel_gen_feature_points = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_GENERATE_FEATURE_POINTS);
 		cl::Kernel & kernel_extract_feature_points = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_EXTRACT_FEATURE_POINTS);
+		cl::Kernel & kernel_draw_feature_points = *CLManager::GetInstance()->GetKernel(Constants::KERNEL_DRAW_FEATURE_POINTS);
 
 		cl::Buffer convCL = cl::Buffer(m_context, CL_MEM_READ_ONLY, (1 + BLUR_KERNEL_SIZE * BLUR_KERNEL_SIZE) * sizeof(float), 0, 0);
 		cl::Buffer keypointsCL = cl::Buffer(m_context, CL_MEM_READ_WRITE, kps_size * sizeof(KeyPoint), 0, 0);
@@ -345,8 +374,9 @@ std::vector<FeaturePoint> Octave::ComputeOrientation()
 			res = kernel.setArg(1, *m_magnitudes[i - 1]);
 			res = kernel.setArg(2, *m_orientations[i - 1]);
 
-			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange);
+			res = m_queue.enqueueNDRangeKernel(kernel, cl::NullRange, m_range, cl::NullRange, nullptr, &ev);
 			m_queue.finish();
+			ret += ev.getProfilingInfo<CL_PROFILING_COMMAND_END>() - ev.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 
 			// blur magnitudes
 			float sigma = m_starting_sigma * std::pow(SIGMA_INCREMENT, i);
@@ -380,8 +410,9 @@ std::vector<FeaturePoint> Octave::ComputeOrientation()
 			res = kernel_gen_feature_points.setArg(9, m_height);
 			res = kernel_gen_feature_points.setArg(10, countCL);
 
-			res = m_queue.enqueueNDRangeKernel(kernel_gen_feature_points, cl::NullRange, m_range, cl::NullRange);
+			res = m_queue.enqueueNDRangeKernel(kernel_gen_feature_points, cl::NullRange, m_range, cl::NullRange, nullptr, &ev);
 			m_queue.finish();
+			ret += ev.getProfilingInfo<CL_PROFILING_COMMAND_END>() - ev.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 
 			// compute inerp magnitude and orientation
 			res = kernel_magn_ori_interp.setArg(0, *m_DoGs[i]);
@@ -390,12 +421,13 @@ std::vector<FeaturePoint> Octave::ComputeOrientation()
 			res = kernel_magn_ori_interp.setArg(3, m_width);
 			res = kernel_magn_ori_interp.setArg(4, m_height);
 
-			res = m_queue.enqueueNDRangeKernel(kernel_magn_ori_interp, cl::NullRange, m_range, cl::NullRange);
+			res = m_queue.enqueueNDRangeKernel(kernel_magn_ori_interp, cl::NullRange, m_range, cl::NullRange, nullptr, &ev);
 			m_queue.finish();
+			ret += ev.getProfilingInfo<CL_PROFILING_COMMAND_END>() - ev.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 
 			m_queue.enqueueReadBuffer(countCL, CL_TRUE, 0, sizeof(unsigned), &fv_count, 0, NULL);
 
-			std::cout << "Count=" << fv_count << std::endl;
+			//std::cout << "Count=" << fv_count << std::endl;
 			if (0 == fv_count)
 			{
 				continue;
@@ -412,16 +444,25 @@ std::vector<FeaturePoint> Octave::ComputeOrientation()
 			res = kernel_extract_feature_points.setArg(5, m_width);
 			res = kernel_extract_feature_points.setArg(6, m_height);
 
-			res = m_queue.enqueueNDRangeKernel(kernel_extract_feature_points, cl::NullRange, cl::NDRange(fv_count, 1), cl::NullRange);
+			res = m_queue.enqueueNDRangeKernel(kernel_extract_feature_points, cl::NullRange, cl::NDRange(fv_count, 1), cl::NullRange, nullptr, &ev);
+			m_queue.finish();
+			ret += ev.getProfilingInfo<CL_PROFILING_COMMAND_END>() - ev.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+			
+			res = kernel_draw_feature_points.setArg(0, *m_default_image);
+			res = kernel_draw_feature_points.setArg(1, fvCL);
+			res = kernel_draw_feature_points.setArg(2, m_width);
+			res = kernel_draw_feature_points.setArg(3, m_height);
+
+			res = m_queue.enqueueNDRangeKernel(kernel_draw_feature_points, cl::NullRange, cl::NDRange(fv_count, 1), cl::NullRange);
 			m_queue.finish();
 
 			m_queue.enqueueReadBuffer(fvCL, CL_TRUE, 0, fv_count * sizeof(FeaturePoint), &fv[0], 0, NULL);
 			m_queue.finish();
 
-
-			// TODO: copy all fv-s to single vector
 			fvps.insert(fvps.end(), fv.begin(), fv.end());
 		}
+
+		//std::cout << "Orientation=" << ret / 1000000.f << std::endl;
 	}
 	catch (const cl::Error & err)
 	{
