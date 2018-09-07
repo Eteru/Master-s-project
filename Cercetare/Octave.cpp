@@ -153,7 +153,6 @@ Octave::~Octave()
 	//	}
 	//}
 
-	// TODO: no fucking idea whats going on
 	//if (nullptr != m_default_image)
 	//{
 	//	delete m_default_image;

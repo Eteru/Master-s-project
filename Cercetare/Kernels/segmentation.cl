@@ -146,9 +146,14 @@ __kernel void threshold(
 	const int2 imgCoords = (int2)(get_global_id(0), get_global_id(1));
 
 	float3 rgb = read_imagef(input, srcSampler, imgCoords).xyz;
-	float colorX = rgb.x >= value ? 1.0 : 0.0;
-	float colorY = rgb.y >= value ? 1.0 : 0.0;
-	float colorZ = rgb.z >= value ? 1.0 : 0.0;
+	//float colorX = rgb.x >= value ? 1.0 : 0.0;
+	//float colorY = rgb.y >= value ? 1.0 : 0.0;
+	//float colorZ = rgb.z >= value ? 1.0 : 0.0;
 
-	write_imagef(output, imgCoords, (float4)(colorX, colorY, colorZ, 1.0));
+	float color = 0.21 * rgb.x + 0.72 * rgb.y + 0.07 * rgb.z;
+
+	if (color >= value)
+		write_imagef(output, imgCoords, (float4)(1.0, 1.0, 1.0, 1.0));
+	else
+		write_imagef(output, imgCoords, (float4)(0.0, 0.0, 0.0, 1.0));
 }
